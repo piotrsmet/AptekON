@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Layout z mapą Leaflet</title>
+
+  <!-- Leaflet CSS -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      font-family: sans-serif;
+    }
+
+    /* Pasek u góry */
+    header {
+      background-image: linear-gradient(to right, #305669, #B7E5CD);
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    header input[type="text"] {
+      width: 40%;
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      border-radius: 20px;
+      outline: none;
+    }
+
+    /* Logo */
+    #logo {
+      width: 200px;
+      height: 60px;
+      position: absolute;
+      top: 4px;
+      left: 10px;
+    }
+
+    /* Kontener główny */
+    .container {
+      flex: 1;
+      display: flex;
+      height: calc(100vh - 60px);
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    #sidebar {
+      background-image: linear-gradient(to bottom, #305669, #B7E5CD);
+      width: 250px;
+      color: white;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    /* Mapa */
+    #map {
+      flex: 1;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <img src="logo1.svg" id="logo" />
+    <input type="text" placeholder="Szukaj..." />
+  </header>
+
+  <div class="container">
+    <div id="sidebar">
+      <h3>Menu</h3>
+      <ul>
+        <li>Opcja 1</li>
+        <li>Opcja 2</li>
+        <li>Opcja 3</li>
+      </ul>
+    </div>
+
+    <div id="map"></div>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    // Inicjalizacja mapy - Lublin
+    const map = L.map('map').setView([51.2465, 22.5684], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    // Marker Apteka1
+    const marker = L.marker([51.2479, 22.5624]).addTo(map);
+    marker.bindPopup("<b>Apteka1</b><br>ul. Krakowskie Przedmieście 10, Lublin").openPopup();
+  </script>
+</body>
+</html>
