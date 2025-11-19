@@ -5,7 +5,7 @@ import fs from "fs"
 import {open} from "sqlite"
 import SwaggerUI from "swagger-ui-express";
 import YAML from "yamljs";
-
+import path from "path";
 
 const app = express();
 const swaggerDocument = YAML.load("./swagger.yaml")
@@ -24,6 +24,12 @@ async function initDb() {
   console.log("Połączono z bazą SQLite.");
 }
 
+const __dirname = path.resolve(); 
+app.use(express.static(path.join(__dirname, "../frontend", "dist")));
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "../frontend", "dist", "index.html"));
+}); 
 
 app.get("/apteki", async (req, res) =>{
   try {
