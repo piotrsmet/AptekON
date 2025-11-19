@@ -3,11 +3,16 @@ import cors from "cors";
 import sqlite3 from "sqlite3"
 import fs from "fs"
 import {open} from "sqlite"
+import SwaggerUI from "swagger-ui-express";
+import YAML from "yamljs";
 
 
 const app = express();
+const swaggerDocument = YAML.load("./swagger.yaml")
 app.use(cors());
 app.use(express.json());
+app.use("/api", SwaggerUI.serve, SwaggerUI.setup(swaggerDocument));
+
 
 let db;
 

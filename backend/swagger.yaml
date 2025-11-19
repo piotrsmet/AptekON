@@ -1,0 +1,17 @@
+openapi: 3.0.0
+info:
+  title: AptekON API
+  version: 4.2.0
+paths:
+  /apteki:
+    get:
+      summary: Zwraca plik JSON z danymi aptek
+      responses:
+        200:
+          description: OK
+  /apteki/id:
+    get:
+      summary: Zwraca JSON id aptek
+      responses:
+        200:
+          description: OK
