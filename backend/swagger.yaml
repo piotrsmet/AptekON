@@ -15,3 +15,32 @@ paths:
       responses:
         200:
           description: OK
+  /uzytkownik/add:
+    post:
+      summary: Dodaje nowego użytkownika
+      tags:
+        - Użytkownicy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                haslo:
+                  type: string
+                admin:
+                  type: number
+              required:
+                - email
+                - haslo
+      responses:
+        200:
+          description: Użytkownik dodany poprawnie
+        400:
+          description: Brak wymaganych danych
+        500:
+          description: Błąd serwera
+ 

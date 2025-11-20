@@ -24,6 +24,8 @@ async function initDb() {
   console.log("Połączono z bazą SQLite.");
 }
 
+
+
 const __dirname = path.resolve(); 
 app.use(express.static(path.join(__dirname, "../frontend", "dist")));
 
@@ -52,12 +54,30 @@ app.get("/apteki/id", async (req, res) =>{
 });
 
 
-app.get("/api/matches", (req, res) => {
-  res.json([
-    { id: 1, teamA: "Real Madrid", teamB: "Barcelona", oddsA: 2.1, oddsB: 3.2 },
-    { id: 2, teamA: "Arsenal", teamB: "Chelsea", oddsA: 1.9, oddsB: 2.8 },
-  ]);
+app.post("/uzytkownik/add", async (req, res) => {
+  try {
+    let {email, haslo, admin} = req.body;
+
+    if (!email || !haslo) {
+      return res.status(400).json({ error: "Brakuje danych w body" });
+    }
+
+    if (!admin)
+      admin = 0;
+
+    await db.run(
+      `INSERT INTO uzytkownicy (email, haslo, admin) VALUES (?, ?, ?)`,
+      [email, haslo, admin]
+    );
+
+    res.json({ message: "Użytkownik dodany!" });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Błąd zapisu użytkownika" });
+  }
 });
+
 
 const PORT = 5000;
 initDb().then(() => {
@@ -65,3 +85,4 @@ initDb().then(() => {
 }).catch(err => {
   console.error("Błąd przy inicjalizacji bazy:", err);
 });
+
