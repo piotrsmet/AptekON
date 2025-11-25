@@ -15,9 +15,23 @@ paths:
       responses:
         200:
           description: OK
+  /apteka/{id}:
+    get:
+      summary: Zwraca dane konkretnej apteki na podstawie id
+      parameters:
+        - in: query
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: ID apteki
+      responses:
+        200:
+          description: OK
   /uzytkownik/add:
     post:
       summary: Dodaje nowego użytkownika
+      description: Hasło zostanie zhashowane przed zapisaniem; odpowiedź nie zawiera hasła.
       tags:
         - Użytkownicy
       requestBody:
@@ -39,8 +53,287 @@ paths:
       responses:
         200:
           description: Użytkownik dodany poprawnie
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Użytkownik dodany!
         400:
           description: Brak wymaganych danych
+        500:
+          description: Błąd serwera
+        409:
+          description: Użytkownik z podanym emailem już istnieje
+  /uzytkownik/{id}:
+    get:
+      summary: Zwraca dane użytkownika na podstawie id
+      tags:
+        - Użytkownicy
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: ID użytkownika
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  email:
+                    type: string
+                  admin:
+                    type: integer
+        400:
+          description: Brakuje id w zapytaniu
+        404:
+          description: Nie znaleziono użytkownika o podanym id
+        500:
+          description: Błąd serwera
+  /uzytkownik/login:
+    post:
+      summary: Logowanie użytkownika (weryfikacja hasła)
+      tags:
+        - Użytkownicy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                haslo:
+                  type: string
+              required:
+                - email
+                - haslo
+      responses:
+        200:
+          description: Zalogowano poprawnie
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Zalogowano poprawnie
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      email:
+                        type: string
+                      admin:
+                        type: integer
+        400:
+          description: Brakuje danych w body
+        401:
+          description: Nieprawidłowy email lub hasło
+        500:
+          description: Błąd serwera
+  /uzytkownicy:
+    get:
+      summary: Zwraca listę użytkowników
+      tags:
+        - Użytkownicy
+      responses:
+        200:
+          description: Lista użytkowników
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    email:
+                      type: string
+                    admin:
+                      type: integer
+        500:
+          description: Błąd serwera
+  /leki:
+    get:
+      summary: Zwraca listę leków z bazy danych
+      tags:
+        - Leki
+      responses:
+        200:
+          description: Lista leków
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    nazwa:
+                      type: string
+                    nazwa_powszechna:
+                      type: string
+                    substancja:
+                      type: string
+                    moc:
+                      type: string
+                    droga_podania:
+                      type: string
+                    kraj_pochodzenia:
+                      type: string
+        500:
+          description: Błąd serwera
+  /lek/{id}:
+    get:
+      summary: Zwraca lek na podstawie id
+      tags:
+        - Leki
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: ID leku
+      responses:
+        200:
+          description: Lek znaleziony
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  nazwa:
+                    type: string
+                  nazwa_powszechna:
+                    type: string
+                  substancja:
+                    type: string
+                  moc:
+                    type: string
+                  droga_podania:
+                    type: string
+                  kraj_pochodzenia:
+                    type: string
+        400:
+          description: Brakuje id w zapytaniu
+        404:
+          description: Nie znaleziono leku
+        500:
+          description: Błąd serwera
+  /zaopatrzenie:
+    get:
+      summary: Zwraca zaopatrzenie (opcjonalnie dla konkretnej apteki)
+      tags:
+        - Zaopatrzenie
+      parameters:
+        - in: query
+          name: apteka_id
+          schema:
+            type: integer
+          required: false
+          description: ID apteki (opcjonalnie)
+      responses:
+        200:
+          description: Lista zaopatrzenia
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    apteka_id:
+                      type: integer
+                    lek_id:
+                      type: integer
+                    ilosc:
+                      type: integer
+                    nazwa:
+                      type: string
+                    nazwa_powszechna:
+                      type: string
+                    substancja:
+                      type: string
+                    moc:
+                      type: string
+        500:
+          description: Błąd serwera
+    post:
+      summary: Dodaje nowe zaopatrzenie
+      tags:
+        - Zaopatrzenie
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                apteka_id:
+                  type: integer
+                lek_id:
+                  type: integer
+                ilosc:
+                  type: integer
+              required:
+                - apteka_id
+                - lek_id
+                - ilosc
+      responses:
+        200:
+          description: Zaopatrzenie dodane
+        400:
+          description: Brakuje wymaganych pól
+        500:
+          description: Błąd serwera
+  /zaopatrzenie/{id}:
+    put:
+      summary: Aktualizuje ilość w zaopatrzeniu
+      tags:
+        - Zaopatrzenie
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: ID zaopatrzenia
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ilosc:
+                  type: integer
+              required:
+                - ilosc
+      responses:
+        200:
+          description: Zaopatrzenie zaktualizowane
+        400:
+          description: Brakuje danych
         500:
           description: Błąd serwera
  
