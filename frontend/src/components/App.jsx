@@ -6,13 +6,14 @@ import '../style/App.css'
 
 function App() {
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectedApteka, setSelectedApteka] = useState(null)
 
   return (
     <div className="flex flex-col h-screen">
       <Header searchQuery={searchQuery} onSearchChange={setSearchQuery} />
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar />
-        <Map />
+        <Sidebar selectedApteka={selectedApteka} />
+        <Map onSelectApteka={setSelectedApteka} />
       </div>
     </div>
   )
