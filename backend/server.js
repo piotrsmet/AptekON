@@ -270,6 +270,28 @@ app.put('/zaopatrzenie/:id', async (req, res) => {
   }
 });
 
+app.get('/leki/search/:query', async (req, res) => {
+  try {
+    const { query } = req.params;
+    if (!query) {
+      return res.status(400).json({ error: 'Brakuje zapytania wyszukiwania' });
+    }
+    
+    const likeQuery = `%${query}%`;
+    const leki = await db.all(
+      `SELECT * FROM leki 
+       WHERE nazwa LIKE ? 
+          OR nazwa_powszechna LIKE ? 
+          OR substancja LIKE ?`,
+      [likeQuery, likeQuery, likeQuery]
+    );
+
+    res.json(leki);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Błąd wyszukiwania leków' });
+  }
+});
 
 const PORT = 5000;
 initDb().then(() => {
