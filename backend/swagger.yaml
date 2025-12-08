@@ -336,4 +336,50 @@ paths:
           description: Brakuje danych
         500:
           description: Błąd serwera
+  /zaopatrzenie/apteka/{id}:
+    get:
+      summary: Zwraca zaopatrzenie dla konkretnej apteki
+      tags:
+        - Zaopatrzenie
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: ID apteki
+      responses:
+        200:
+          description: Lista zaopatrzenia dla apteki
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    apteka_id:
+                      type: integer
+                    lek_id:
+                      type: integer
+                    ilosc:
+                      type: integer
+                    nazwa:
+                      type: string
+                    nazwa_powszechna:
+                      type: string
+                    substancja:
+                      type: string
+                    moc:
+                      type: string
+                    droga_podania:
+                      type: string
+                    kraj_pochodzenia:
+                      type: string
+        400:
+          description: Brakuje id apteki w zapytaniu
+        500:
+          description: Błąd serwera
  

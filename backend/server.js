@@ -206,6 +206,29 @@ app.get('/zaopatrzenie', async (req, res) => {
   }
 });
 
+app.get('/zaopatrzenie/apteka/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    if (!id) {
+      return res.status(400).json({ error: 'Brakuje id apteki w zapytaniu' });
+    }
+
+    const result = await db.all(
+      `SELECT z.id, z.apteka_id, z.lek_id, z.ilosc, 
+              l.nazwa, l.nazwa_powszechna, l.substancja, l.moc, l.droga_podania, l.kraj_pochodzenia
+       FROM zaopatrzenie z
+       LEFT JOIN leki l ON z.lek_id = l.id
+       WHERE z.apteka_id = ?`,
+      [id]
+    );
+
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Błąd pobierania zaopatrzenia dla apteki' });
+  }
+});
+
 app.post('/zaopatrzenie/add', async (req, res) => {
   try {
     const { apteka_id, lek_id, ilosc } = req.body;
