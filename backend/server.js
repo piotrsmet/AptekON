@@ -229,6 +229,7 @@ app.get('/zaopatrzenie/apteka/:id', async (req, res) => {
   }
 });
 
+
 app.post('/zaopatrzenie/add', async (req, res) => {
   try {
     const { apteka_id, lek_id, ilosc } = req.body;
@@ -270,6 +271,49 @@ app.put('/zaopatrzenie/:id', async (req, res) => {
   }
 });
 
+app.get('/leki/search/:query', async (req, res) => {
+  try {
+    const { query } = req.params;
+    if (!query) {
+      return res.status(400).json({ error: 'Brakuje zapytania wyszukiwania' });
+    }
+    
+    const likeQuery = `%${query}%`;
+    const leki = await db.all(
+      `SELECT * FROM leki 
+       WHERE nazwa LIKE ? 
+          OR nazwa_powszechna LIKE ? 
+          OR substancja LIKE ?`,
+      [likeQuery, likeQuery, likeQuery]
+    );
+
+    res.json(leki);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Błąd wyszukiwania leków' });
+  }
+});
+
+app.get('/zaopatrzenie/apteki/lek/:lek_id', async (req, res) => {
+  try {
+    const { lek_id } = req.params;
+    if (!lek_id) {
+      return res.status(400).json({ error: 'Brakuje id leku w zapytaniu' });
+    }
+
+    const zaopatrzenie = await db.all(
+      `SELECT id, apteka_id, ilosc
+       FROM zaopatrzenie
+       WHERE lek_id = ?`,
+      [lek_id]
+    );
+
+    res.json(zaopatrzenie);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Błąd pobierania zaopatrzenia dla leku' });
+  }
+});
 
 const PORT = 5000;
 initDb().then(() => {

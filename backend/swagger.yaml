@@ -198,6 +198,44 @@ paths:
                       type: string
         500:
           description: Błąd serwera
+  /leki/search/{query}:
+    get:
+      summary: Wyszukuje leki na podstawie zapytania
+      tags:
+        - Leki
+      parameters:
+        - in: path
+          name: query
+          schema:
+            type: string
+          required: true
+          description: Zapytanie wyszukiwania
+      responses:
+        200:
+          description: Lista leków pasujących do zapytania
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    nazwa:
+                      type: string
+                    nazwa_powszechna:
+                      type: string
+                    substancja:
+                      type: string
+                    moc:
+                      type: string
+                    droga_podania:
+                      type: string
+                    kraj_pochodzenia:
+                      type: string
+        500:
+          description: Błąd serwera
   /lek/{id}:
     get:
       summary: Zwraca lek na podstawie id
@@ -334,6 +372,38 @@ paths:
           description: Zaopatrzenie zaktualizowane
         400:
           description: Brakuje danych
+        500:
+          description: Błąd serwera
+  /zaopatrzenie/apteki/lek/{lek_id}:
+    get:
+      summary: Zwraca listę aptek posiadających dany lek
+      tags:
+        - Zaopatrzenie
+      parameters:
+        - in: path
+          name: lek_id
+          schema:
+            type: integer
+          required: true
+          description: ID leku
+      responses:
+        200:
+          description: Lista aptek z danym lekiem
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    apteka_id:
+                      type: integer
+                    ilosc:
+                      type: integer
+        400:
+          description: Brakuje id leku w zapytaniu
         500:
           description: Błąd serwera
   /zaopatrzenie/apteka/{id}:
