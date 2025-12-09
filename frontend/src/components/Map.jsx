@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react'
 
 // Prosty escape HTML, zapobiega wstrzyknięciom w popupach
 function escapeHtml(unsafe) {
@@ -11,10 +11,24 @@ function escapeHtml(unsafe) {
     .replace(/'/g, '&#039;')
 }
 
-function Map({ onSelectApteka }) {
+const Map = forwardRef(({ onSelectApteka }, ref) => {
   const mapContainer = useRef(null)
   const map = useRef(null)
+  const markersMap = useRef({})
   const [apteki, setApteki] = useState([])
+
+  // Expose zoomToApteka method via ref
+  useImperativeHandle(ref, () => ({
+    zoomToApteka: (apteka) => {
+      if (map.current && apteka.lat && apteka.lon) {
+        map.current.setView([apteka.lat, apteka.lon], 16)
+      }
+      // Otwórz popup markera
+      if (markersMap.current[apteka.id]) {
+        markersMap.current[apteka.id].openPopup()
+      }
+    }
+  }))
 
   // Pobierz apteki z API
   useEffect(() => {
@@ -62,6 +76,7 @@ function Map({ onSelectApteka }) {
           })
 
           const marker = L.default.marker([apteka.lat, apteka.lon], { icon: customIcon }).addTo(map.current)
+          markersMap.current[apteka.id] = marker
 
           // Przygotuj wartości
           const nazwa = apteka.nazwa || null
@@ -120,6 +135,8 @@ function Map({ onSelectApteka }) {
   }, [apteki])
 
   return <div ref={mapContainer} className="flex-1 h-full" />
-}
+})
+
+Map.displayName = 'Map'
 
 export default Map

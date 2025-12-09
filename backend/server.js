@@ -44,6 +44,25 @@ app.get("/apteki", async (req, res) =>{
   }
 });
 
+app.get("/apteki/search/:q", async (req, res) => {
+  try {
+    const { q } = req.params;
+    if (!q || q.trim().length < 2) {
+      return res.json([]);
+    }
+
+    const searchTerm = `%${q}%`;
+    const apteki = await db.all(
+      "SELECT * FROM apteki WHERE nazwa LIKE ? OR wlasciciel_nazwa LIKE ? LIMIT 5",
+      [searchTerm, searchTerm]
+    );
+    res.json(apteki);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Błąd wyszukiwania" });
+  }
+});
+
 app.get("/apteki/id", async (req, res) =>{
   try {
     const apteki = await db.all("SELECT id FROM apteki");
