@@ -229,6 +229,7 @@ app.get('/zaopatrzenie/apteka/:id', async (req, res) => {
   }
 });
 
+
 app.post('/zaopatrzenie/add', async (req, res) => {
   try {
     const { apteka_id, lek_id, ilosc } = req.body;
@@ -290,6 +291,27 @@ app.get('/leki/search/:query', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Błąd wyszukiwania leków' });
+  }
+});
+
+app.get('/zaopatrzenie/apteki/lek/:lek_id', async (req, res) => {
+  try {
+    const { lek_id } = req.params;
+    if (!lek_id) {
+      return res.status(400).json({ error: 'Brakuje id leku w zapytaniu' });
+    }
+
+    const zaopatrzenie = await db.all(
+      `SELECT id, apteka_id, ilosc
+       FROM zaopatrzenie
+       WHERE lek_id = ?`,
+      [lek_id]
+    );
+
+    res.json(zaopatrzenie);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Błąd pobierania zaopatrzenia dla leku' });
   }
 });
 
