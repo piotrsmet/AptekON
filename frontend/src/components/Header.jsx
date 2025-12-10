@@ -76,7 +76,7 @@ function Header({ searchQuery, onSearchChange, onSelectApteka }) {
                 <li
                   key={apteka.id}
                   onClick={() => handleSelectSuggestion(apteka)}
-                  className="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition"
+                  className="ml-3 mb-1 mt-1 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition"
                 >
                   <p className="font-semibold text-gray-900 text-sm">
                     {apteka.nazwa || apteka.wlasciciel_nazwa}
