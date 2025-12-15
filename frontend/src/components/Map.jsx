@@ -11,11 +11,11 @@ function escapeHtml(unsafe) {
     .replace(/'/g, '&#039;')
 }
 
-const Map = forwardRef(({ onSelectApteka }, ref) => {
+const Map = forwardRef(({ onSelectApteka, apteki, selectedDrug, pharmaciesWithDrug }, ref) => {
   const mapContainer = useRef(null)
   const map = useRef(null)
   const markersMap = useRef({})
-  const [apteki, setApteki] = useState([])
+  const layerGroup = useRef(null)
 
   // Expose zoomToApteka method via ref
   useImperativeHandle(ref, () => ({
@@ -30,22 +30,7 @@ const Map = forwardRef(({ onSelectApteka }, ref) => {
     }
   }))
 
-  // Pobierz apteki z API
-  useEffect(() => {
-    const fetchApteki = async () => {
-      try {
-        const response = await fetch('http://localhost:5000/apteki')
-        const data = await response.json()
-        setApteki(data)
-      } catch (err) {
-        console.error('Błąd pobierania aptek:', err)
-      }
-    }
-
-    fetchApteki()
-  }, [])
-
-  // Inicjalizuj mapę i dodaj markery
+  // Inicjalizuj mapę (tylko raz)
   useEffect(() => {
     if (map.current || !mapContainer.current) return
 
@@ -64,31 +49,59 @@ const Map = forwardRef(({ onSelectApteka }, ref) => {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
       }).addTo(map.current)
 
+      // Utwórz warstwę dla markerów
+      layerGroup.current = L.default.layerGroup().addTo(map.current)
+    })
+
+    return () => {
+      if (map.current) {
+        map.current.remove()
+        map.current = null
+      }
+    }
+  }, [])
+
+  // Aktualizuj markery gdy zmieniają się dane
+  useEffect(() => {
+    if (!map.current || !layerGroup.current) return
+
+    import('leaflet').then((L) => {
+      // Wyczyść stare markery
+      layerGroup.current.clearLayers()
+      markersMap.current = {}
+
       // Dodaj markery dla wszystkich aptek
       apteki.forEach((apteka) => {
         if (apteka.lat && apteka.lon) {
-          // Stwórz niestandardową ikonę - małe niebieskie kółko
+          // Określ kolor pineski - zielona jeśli ma wybrany lek, niebieska w przeciwnym razie
+          let iconUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIgZmlsbD0iIzI1NjNlYiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zdmc+' // Niebieski
+          
+          if (selectedDrug && pharmaciesWithDrug.includes(apteka.id)) {
+            iconUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIgZmlsbD0iIzE2YTM0YSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zdmc+' // Zielony
+          }
+
           const customIcon = L.default.icon({
-            iconUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIgZmlsbD0iIzI1NjNlYiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zdmc+',
+            iconUrl: iconUrl,
             iconSize: [24, 24],
             iconAnchor: [12, 12],
             popupAnchor: [0, -12]
           })
 
-          const marker = L.default.marker([apteka.lat, apteka.lon], { icon: customIcon }).addTo(map.current)
+          const marker = L.default.marker([apteka.lat, apteka.lon], { icon: customIcon }).addTo(layerGroup.current)
           markersMap.current[apteka.id] = marker
 
           // Przygotuj wartości
           const nazwa = apteka.nazwa || null
           const owner = apteka.wlasciciel_nazwa || 'wlasciciel nazwa'
           const street = apteka.nazwa_ulicy || ''
-          const number = apteka.numer_budynku || ''
+          const number = apteka.nr_budynku || ''
           const postal = apteka.kod_pocztowy || ''
           const city = apteka.miejscowosc || ''
           const phone = apteka.telefon || ''
           const email = apteka.email || ''
 
-          const addressLine = [street, number].filter(Boolean).join(' ')
+          // Format adresu: "ulica, numer" (zamiast "ulica numer")
+          const addressLine = street && number ? `${street}, ${number}` : (street || number)
           const cityLine = [postal, city].filter(Boolean).join(' ')
 
           // Popup: jeśli jest kolumna 'nazwa' — wyświetl ją na górze i właściciela poniżej
@@ -125,14 +138,7 @@ const Map = forwardRef(({ onSelectApteka }, ref) => {
         }
       })
     })
-
-    return () => {
-      if (map.current) {
-        map.current.remove()
-        map.current = null
-      }
-    }
-  }, [apteki])
+  }, [apteki, selectedDrug, pharmaciesWithDrug])
 
   return <div ref={mapContainer} className="flex-1 h-full" />
 })

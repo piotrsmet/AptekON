@@ -290,6 +290,24 @@ app.put('/zaopatrzenie/:id', async (req, res) => {
   }
 });
 
+app.get('/leki/suggestions', async (req, res) => {
+  try {
+    // Pobierz 4 losowe leki, które są dostępne w zaopatrzeniu
+    const leki = await db.all(`
+      SELECT DISTINCT l.id, l.nazwa 
+      FROM zaopatrzenie z
+      JOIN leki l ON z.lek_id = l.id
+      WHERE z.ilosc > 0
+      ORDER BY RANDOM() 
+      LIMIT 4
+    `);
+    res.json(leki);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Błąd pobierania sugerowanych leków' });
+  }
+});
+
 app.get('/leki/search/:query', async (req, res) => {
   try {
     const { query } = req.params;
@@ -302,7 +320,8 @@ app.get('/leki/search/:query', async (req, res) => {
       `SELECT * FROM leki 
        WHERE nazwa LIKE ? 
           OR nazwa_powszechna LIKE ? 
-          OR substancja LIKE ?`,
+          OR substancja LIKE ?
+       LIMIT 10`,
       [likeQuery, likeQuery, likeQuery]
     );
 
