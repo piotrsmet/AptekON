@@ -7,6 +7,7 @@ import SwaggerUI from "swagger-ui-express";
 import YAML from "yamljs";
 import path from "path";
 import bcrypt from "bcryptjs";
+import { geocodeAddress } from "./address_fetching.js";
 
 const app = express();
 const swaggerDocument = YAML.load("./swagger.yaml")
@@ -60,6 +61,59 @@ app.get("/apteki/search/:q", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Błąd wyszukiwania" });
+  }
+});
+
+app.put("/apteka/wlasciciel/:id_apteki", async (req, res) => {
+  try {
+    const { id_apteki } = req.params;
+    const { owner_id } = req.body;
+    if (!id_apteki || !owner_id) {
+      return res.status(400).json({ error: "Brakuje id apteki lub wlasciciel_id" });
+    }
+
+    await db.run(
+      "UPDATE apteki SET wlasciciel_id = ? WHERE id = ?",
+      [owner_id, id_apteki]
+    );
+
+    res.json({ message: "Zaktualizowano właściciela apteki" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Błąd aktualizacji właściciela apteki" });
+  }
+});
+
+app.post("/apteka/add", async (req, res) => {
+  try {
+    let {nazwa, miejscowosc, nazwa_ulicy, nr_budynku, kod_pocztowy, telefon, email, wlasciciel_nazwa, wlasciciel_id} = req.body;
+    if (!nazwa) {
+      return res.status(400).json({ error: "Brakuje danych w body" });
+    }
+    const {lat, lon} = await geocodeAddress(miejscowosc, nazwa_ulicy, nr_budynku, kod_pocztowy);
+    if (lat && lon) {
+      console.log(`Geokodowanie powiodło się: ${lat}, ${lon}`);
+    } 
+    if (!telefon)
+      telefon = "";
+    if (!email)
+      email = "";
+    if (!wlasciciel_nazwa)
+      wlasciciel_nazwa = "";
+    if (!wlasciciel_id)
+      wlasciciel_id = null;
+
+    await db.run(
+      `INSERT INTO apteki (nazwa, miejscowosc, nazwa_ulicy, nr_budynku, kod_pocztowy, telefon, email, wlasciciel_nazwa, wlasciciel_id, lat, lon) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [nazwa, miejscowosc, nazwa_ulicy, nr_budynku, kod_pocztowy, telefon, email, wlasciciel_nazwa, wlasciciel_id, lat, lon]
+    );
+
+    res.json({ message: "Apteka dodana!" });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Błąd zapisu apteki" });
   }
 });
 

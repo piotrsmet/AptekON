@@ -28,6 +28,74 @@ paths:
       responses:
         200:
           description: OK
+  /apteka/wlasciciel/{apteka_id}:
+    put: 
+      summary: Zmienia właściciela apteki
+      tags:
+        - Apteki
+      parameters:
+        - in: path
+          name: apteka_id
+          schema:
+            type: integer
+          required: true
+          description: ID apteki
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                owner_id:
+                  type: integer
+              required:
+                - owner_id
+      responses:
+        200:
+          description: Właściciel apteki zaktualizowany
+        400:
+          description: Brak wymaganych danych
+        500:
+          description: Błąd serwera
+  /apteka/add:
+    post:
+      summary: Dodaje nową aptekę
+      tags:
+        - Apteki
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nazwa:
+                  type: string
+                miejscowosc:
+                  type: string
+                nazwa_ulicy:
+                  type: string
+                nr_budynku:
+                  type: integer
+                kod_pocztowy:
+                  type: string
+                owner_id:
+                  type: integer
+              required:
+                - nazwa
+                - miejscowosc
+                - nazwa_ulicy
+                - nr_budynku
+                - kod_pocztowy
+                - owner_id
+      responses:
+        200:
+          description: Apteka dodana poprawnie
+        400:
+          description: Brak wymaganych danych
+        500:
+          description: Błąd serwera
   /uzytkownik/add:
     post:
       summary: Dodaje nowego użytkownika
