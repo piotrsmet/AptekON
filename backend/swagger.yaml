@@ -1,68 +1,45 @@
 openapi: 3.0.0
 info:
-  title: AptekON API
-  version: 4.2.0
+  title: "AptekON API"
+  description: "API do zarządzania aptekami, lekami i zaopatrzeniem"
+  version: "1.0.0"
+servers:
+  - url: "http://localhost:5000"
+tags:
+  - name: "Apteki"
+    description: "Zarządzanie aptekami"
+  - name: "Uzytkownicy"
+    description: "Zarządzanie użytkownikami"
+  - name: "Auth"
+    description: "Uwierzytelnianie"
+  - name: "Leki"
+    description: "Katalog leków"
+  - name: "Zaopatrzenie"
+    description: "Zarządzanie stanami magazynowymi"
 paths:
   /apteki:
     get:
-      summary: Zwraca plik JSON z danymi aptek
-      responses:
-        200:
-          description: OK
-  /apteki/id:
-    get:
-      summary: Zwraca JSON id aptek
-      responses:
-        200:
-          description: OK
-  /apteka/{id}:
-    get:
-      summary: Zwraca dane konkretnej apteki na podstawie id
+      tags:
+        - "Apteki"
+      summary: "Pobierz listę aptek"
       parameters:
         - in: query
-          name: id
+          name: "search"
           schema:
-            type: integer
-          required: true
-          description: ID apteki
-      responses:
-        200:
-          description: OK
-  /apteka/wlasciciel/{apteka_id}:
-    put: 
-      summary: Zmienia właściciela apteki
-      tags:
-        - Apteki
-      parameters:
-        - in: path
-          name: apteka_id
+            type: string
+          description: "Wyszukiwanie po nazwie lub właścicielu"
+        - in: query
+          name: "fields"
           schema:
-            type: integer
-          required: true
-          description: ID apteki
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                owner_id:
-                  type: integer
-              required:
-                - owner_id
+            type: string
+          description: "Opcjonalne filtrowanie pól (np. 'id')"
       responses:
-        200:
-          description: Właściciel apteki zaktualizowany
-        400:
-          description: Brak wymaganych danych
-        500:
-          description: Błąd serwera
-  /apteka/add:
+        '200':
+          description: "Lista aptek"
     post:
-      summary: Dodaje nową aptekę
       tags:
-        - Apteki
+        - "Apteki"
+      summary: "Dodaj nową aptekę"
       requestBody:
         required: true
         content:
@@ -77,31 +54,84 @@ paths:
                 nazwa_ulicy:
                   type: string
                 nr_budynku:
-                  type: integer
+                  type: string
                 kod_pocztowy:
                   type: string
-                owner_id:
+                telefon:
+                  type: string
+                email:
+                  type: string
+                wlasciciel_nazwa:
+                  type: string
+                wlasciciel_id:
                   type: integer
-              required:
-                - nazwa
-                - miejscowosc
-                - nazwa_ulicy
-                - nr_budynku
-                - kod_pocztowy
-                - owner_id
       responses:
-        200:
-          description: Apteka dodana poprawnie
-        400:
-          description: Brak wymaganych danych
-        500:
-          description: Błąd serwera
-  /uzytkownik/add:
-    post:
-      summary: Dodaje nowego użytkownika
-      description: Hasło zostanie zhashowane przed zapisaniem; odpowiedź nie zawiera hasła.
+        '200':
+          description: "Apteka dodana"
+  /apteki/{id}:
+    get:
       tags:
-        - Użytkownicy
+        - "Apteki"
+      summary: "Pobierz szczegóły apteki"
+      parameters:
+        - in: path
+          name: "id"
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Szczegóły apteki"
+        '404':
+          description: "Nie znaleziono apteki"
+    patch:
+      tags:
+        - "Apteki"
+      summary: "Aktualizuj właściciela apteki"
+      parameters:
+        - in: path
+          name: "id"
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                wlasciciel_id:
+                  type: integer
+      responses:
+        '200':
+          description: "Zaktualizowano"
+  /apteki/{id}/zaopatrzenie:
+    get:
+      tags:
+        - "Apteki"
+      summary: "Pobierz zaopatrzenie konkretnej apteki"
+      parameters:
+        - in: path
+          name: "id"
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Lista zaopatrzenia"
+  /uzytkownicy:
+    get:
+      tags:
+        - "Uzytkownicy"
+      summary: "Pobierz listę użytkowników"
+      responses:
+        '200':
+          description: "Lista użytkowników"
+    post:
+      tags:
+        - "Uzytkownicy"
+      summary: "Dodaj nowego użytkownika"
       requestBody:
         required: true
         content:
@@ -114,64 +144,29 @@ paths:
                 haslo:
                   type: string
                 admin:
-                  type: number
-              required:
-                - email
-                - haslo
+                  type: integer
       responses:
-        200:
-          description: Użytkownik dodany poprawnie
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: Użytkownik dodany!
-        400:
-          description: Brak wymaganych danych
-        500:
-          description: Błąd serwera
-        409:
-          description: Użytkownik z podanym emailem już istnieje
-  /uzytkownik/{id}:
+        '200':
+          description: "Użytkownik dodany"
+  /uzytkownicy/{id}:
     get:
-      summary: Zwraca dane użytkownika na podstawie id
       tags:
-        - Użytkownicy
+        - "Uzytkownicy"
+      summary: "Pobierz dane użytkownika"
       parameters:
         - in: path
-          name: id
+          name: "id"
+          required: true
           schema:
             type: integer
-          required: true
-          description: ID użytkownika
       responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: integer
-                  email:
-                    type: string
-                  admin:
-                    type: integer
-        400:
-          description: Brakuje id w zapytaniu
-        404:
-          description: Nie znaleziono użytkownika o podanym id
-        500:
-          description: Błąd serwera
-  /uzytkownik/login:
+        '200':
+          description: "Dane użytkownika"
+  /auth/login:
     post:
-      summary: Logowanie użytkownika (weryfikacja hasła)
       tags:
-        - Użytkownicy
+        - "Auth"
+      summary: "Logowanie użytkownika"
       requestBody:
         required: true
         content:
@@ -183,211 +178,68 @@ paths:
                   type: string
                 haslo:
                   type: string
-              required:
-                - email
-                - haslo
       responses:
-        200:
-          description: Zalogowano poprawnie
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: Zalogowano poprawnie
-                  user:
-                    type: object
-                    properties:
-                      id:
-                        type: integer
-                      email:
-                        type: string
-                      admin:
-                        type: integer
-        400:
-          description: Brakuje danych w body
-        401:
-          description: Nieprawidłowy email lub hasło
-        500:
-          description: Błąd serwera
-  /uzytkownicy:
-    get:
-      summary: Zwraca listę użytkowników
-      tags:
-        - Użytkownicy
-      responses:
-        200:
-          description: Lista użytkowników
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: integer
-                    email:
-                      type: string
-                    admin:
-                      type: integer
-        500:
-          description: Błąd serwera
+        '200':
+          description: "Zalogowano poprawnie"
+        '401':
+          description: "Błąd logowania"
   /leki:
     get:
-      summary: Zwraca listę leków z bazy danych
       tags:
-        - Leki
-      responses:
-        200:
-          description: Lista leków
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: integer
-                    nazwa:
-                      type: string
-                    nazwa_powszechna:
-                      type: string
-                    substancja:
-                      type: string
-                    moc:
-                      type: string
-                    droga_podania:
-                      type: string
-                    kraj_pochodzenia:
-                      type: string
-        500:
-          description: Błąd serwera
-  /leki/search/{query}:
-    get:
-      summary: Wyszukuje leki na podstawie zapytania
-      tags:
-        - Leki
-      parameters:
-        - in: path
-          name: query
-          schema:
-            type: string
-          required: true
-          description: Zapytanie wyszukiwania
-      responses:
-        200:
-          description: Lista leków pasujących do zapytania
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: integer
-                    nazwa:
-                      type: string
-                    nazwa_powszechna:
-                      type: string
-                    substancja:
-                      type: string
-                    moc:
-                      type: string
-                    droga_podania:
-                      type: string
-                    kraj_pochodzenia:
-                      type: string
-        500:
-          description: Błąd serwera
-  /lek/{id}:
-    get:
-      summary: Zwraca lek na podstawie id
-      tags:
-        - Leki
-      parameters:
-        - in: path
-          name: id
-          schema:
-            type: integer
-          required: true
-          description: ID leku
-      responses:
-        200:
-          description: Lek znaleziony
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: integer
-                  nazwa:
-                    type: string
-                  nazwa_powszechna:
-                    type: string
-                  substancja:
-                    type: string
-                  moc:
-                    type: string
-                  droga_podania:
-                    type: string
-                  kraj_pochodzenia:
-                    type: string
-        400:
-          description: Brakuje id w zapytaniu
-        404:
-          description: Nie znaleziono leku
-        500:
-          description: Błąd serwera
-  /zaopatrzenie:
-    get:
-      summary: Zwraca zaopatrzenie (opcjonalnie dla konkretnej apteki)
-      tags:
-        - Zaopatrzenie
+        - "Leki"
+      summary: "Pobierz listę leków"
       parameters:
         - in: query
-          name: apteka_id
+          name: "search"
+          schema:
+            type: string
+          description: "Wyszukiwanie leków"
+      responses:
+        '200':
+          description: "Lista leków"
+  /leki/suggestions:
+    get:
+      tags:
+        - "Leki"
+      summary: "Pobierz sugerowane leki"
+      responses:
+        '200':
+          description: "Lista sugerowanych leków"
+  /leki/{id}:
+    get:
+      tags:
+        - "Leki"
+      summary: "Pobierz szczegóły leku"
+      parameters:
+        - in: path
+          name: "id"
+          required: true
           schema:
             type: integer
-          required: false
-          description: ID apteki (opcjonalnie)
       responses:
-        200:
-          description: Lista zaopatrzenia
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: integer
-                    apteka_id:
-                      type: integer
-                    lek_id:
-                      type: integer
-                    ilosc:
-                      type: integer
-                    nazwa:
-                      type: string
-                    nazwa_powszechna:
-                      type: string
-                    substancja:
-                      type: string
-                    moc:
-                      type: string
-        500:
-          description: Błąd serwera
-    post:
-      summary: Dodaje nowe zaopatrzenie
+        '200':
+          description: "Szczegóły leku"
+  /zaopatrzenie:
+    get:
       tags:
-        - Zaopatrzenie
+        - "Zaopatrzenie"
+      summary: "Pobierz zaopatrzenie"
+      parameters:
+        - in: query
+          name: "apteka_id"
+          schema:
+            type: integer
+        - in: query
+          name: "lek_id"
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Lista zaopatrzenia"
+    post:
+      tags:
+        - "Zaopatrzenie"
+      summary: "Dodaj pozycję do zaopatrzenia"
       requestBody:
         required: true
         content:
@@ -401,29 +253,20 @@ paths:
                   type: integer
                 ilosc:
                   type: integer
-              required:
-                - apteka_id
-                - lek_id
-                - ilosc
       responses:
-        200:
-          description: Zaopatrzenie dodane
-        400:
-          description: Brakuje wymaganych pól
-        500:
-          description: Błąd serwera
+        '200':
+          description: "Dodano"
   /zaopatrzenie/{id}:
     put:
-      summary: Aktualizuje ilość w zaopatrzeniu
       tags:
-        - Zaopatrzenie
+        - "Zaopatrzenie"
+      summary: "Aktualizuj ilość w zaopatrzeniu"
       parameters:
         - in: path
-          name: id
+          name: "id"
+          required: true
           schema:
             type: integer
-          required: true
-          description: ID zaopatrzenia
       requestBody:
         required: true
         content:
@@ -433,91 +276,286 @@ paths:
               properties:
                 ilosc:
                   type: integer
-              required:
-                - ilosc
       responses:
-        200:
-          description: Zaopatrzenie zaktualizowane
-        400:
-          description: Brakuje danych
-        500:
-          description: Błąd serwera
-  /zaopatrzenie/apteki/lek/{lek_id}:
+        // filepath: /home/smecik/AptekON/backend/swagger.yaml
+openapi: 3.0.0
+info:
+  title: "AptekON API"
+  description: "API do zarządzania aptekami, lekami i zaopatrzeniem"
+  version: "1.0.0"
+servers:
+  - url: "http://localhost:5000"
+tags:
+  - name: "Apteki"
+    description: "Zarządzanie aptekami"
+  - name: "Uzytkownicy"
+    description: "Zarządzanie użytkownikami"
+  - name: "Auth"
+    description: "Uwierzytelnianie"
+  - name: "Leki"
+    description: "Katalog leków"
+  - name: "Zaopatrzenie"
+    description: "Zarządzanie stanami magazynowymi"
+paths:
+  /apteki:
     get:
-      summary: Zwraca listę aptek posiadających dany lek
       tags:
-        - Zaopatrzenie
+        - "Apteki"
+      summary: "Pobierz listę aptek"
+      parameters:
+        - in: query
+          name: "search"
+          schema:
+            type: string
+          description: "Wyszukiwanie po nazwie lub właścicielu"
+        - in: query
+          name: "fields"
+          schema:
+            type: string
+          description: "Opcjonalne filtrowanie pól (np. 'id')"
+      responses:
+        '200':
+          description: "Lista aptek"
+    post:
+      tags:
+        - "Apteki"
+      summary: "Dodaj nową aptekę"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nazwa:
+                  type: string
+                miejscowosc:
+                  type: string
+                nazwa_ulicy:
+                  type: string
+                nr_budynku:
+                  type: string
+                kod_pocztowy:
+                  type: string
+                telefon:
+                  type: string
+                email:
+                  type: string
+                wlasciciel_nazwa:
+                  type: string
+                wlasciciel_id:
+                  type: integer
+      responses:
+        '200':
+          description: "Apteka dodana"
+  /apteki/{id}:
+    get:
+      tags:
+        - "Apteki"
+      summary: "Pobierz szczegóły apteki"
       parameters:
         - in: path
-          name: lek_id
+          name: "id"
+          required: true
           schema:
             type: integer
-          required: true
-          description: ID leku
       responses:
-        200:
-          description: Lista aptek z danym lekiem
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: integer
-                    apteka_id:
-                      type: integer
-                    ilosc:
-                      type: integer
-        400:
-          description: Brakuje id leku w zapytaniu
-        500:
-          description: Błąd serwera
-  /zaopatrzenie/apteka/{id}:
-    get:
-      summary: Zwraca zaopatrzenie dla konkretnej apteki
+        '200':
+          description: "Szczegóły apteki"
+        '404':
+          description: "Nie znaleziono apteki"
+    patch:
       tags:
-        - Zaopatrzenie
+        - "Apteki"
+      summary: "Aktualizuj właściciela apteki"
       parameters:
         - in: path
-          name: id
+          name: "id"
+          required: true
           schema:
             type: integer
-          required: true
-          description: ID apteki
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                wlasciciel_id:
+                  type: integer
       responses:
-        200:
-          description: Lista zaopatrzenia dla apteki
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: integer
-                    apteka_id:
-                      type: integer
-                    lek_id:
-                      type: integer
-                    ilosc:
-                      type: integer
-                    nazwa:
-                      type: string
-                    nazwa_powszechna:
-                      type: string
-                    substancja:
-                      type: string
-                    moc:
-                      type: string
-                    droga_podania:
-                      type: string
-                    kraj_pochodzenia:
-                      type: string
-        400:
-          description: Brakuje id apteki w zapytaniu
-        500:
-          description: Błąd serwera
- 
+        '200':
+          description: "Zaktualizowano"
+  /apteki/{id}/zaopatrzenie:
+    get:
+      tags:
+        - "Apteki"
+      summary: "Pobierz zaopatrzenie konkretnej apteki"
+      parameters:
+        - in: path
+          name: "id"
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Lista zaopatrzenia"
+  /uzytkownicy:
+    get:
+      tags:
+        - "Uzytkownicy"
+      summary: "Pobierz listę użytkowników"
+      responses:
+        '200':
+          description: "Lista użytkowników"
+    post:
+      tags:
+        - "Uzytkownicy"
+      summary: "Dodaj nowego użytkownika"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                haslo:
+                  type: string
+                admin:
+                  type: integer
+      responses:
+        '200':
+          description: "Użytkownik dodany"
+  /uzytkownicy/{id}:
+    get:
+      tags:
+        - "Uzytkownicy"
+      summary: "Pobierz dane użytkownika"
+      parameters:
+        - in: path
+          name: "id"
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Dane użytkownika"
+  /auth/login:
+    post:
+      tags:
+        - "Auth"
+      summary: "Logowanie użytkownika"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                haslo:
+                  type: string
+      responses:
+        '200':
+          description: "Zalogowano poprawnie"
+        '401':
+          description: "Błąd logowania"
+  /leki:
+    get:
+      tags:
+        - "Leki"
+      summary: "Pobierz listę leków"
+      parameters:
+        - in: query
+          name: "search"
+          schema:
+            type: string
+          description: "Wyszukiwanie leków"
+      responses:
+        '200':
+          description: "Lista leków"
+  /leki/suggestions:
+    get:
+      tags:
+        - "Leki"
+      summary: "Pobierz sugerowane leki"
+      responses:
+        '200':
+          description: "Lista sugerowanych leków"
+  /leki/{id}:
+    get:
+      tags:
+        - "Leki"
+      summary: "Pobierz szczegóły leku"
+      parameters:
+        - in: path
+          name: "id"
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Szczegóły leku"
+  /zaopatrzenie:
+    get:
+      tags:
+        - "Zaopatrzenie"
+      summary: "Pobierz zaopatrzenie"
+      parameters:
+        - in: query
+          name: "apteka_id"
+          schema:
+            type: integer
+        - in: query
+          name: "lek_id"
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Lista zaopatrzenia"
+    post:
+      tags:
+        - "Zaopatrzenie"
+      summary: "Dodaj pozycję do zaopatrzenia"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                apteka_id:
+                  type: integer
+                lek_id:
+                  type: integer
+                ilosc:
+                  type: integer
+      responses:
+        '200':
+          description: "Dodano"
+  /zaopatrzenie/{id}:
+    put:
+      tags:
+        - "Zaopatrzenie"
+      summary: "Aktualizuj ilość w zaopatrzeniu"
+      parameters:
+        - in: path
+          name: "id"
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ilosc:
+                  type: integer
+      responses:
+        '200':
+          description: "Zaktualizowano"

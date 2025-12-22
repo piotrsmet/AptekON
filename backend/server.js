@@ -15,7 +15,6 @@ app.use(cors());
 app.use(express.json());
 app.use("/api", SwaggerUI.serve, SwaggerUI.setup(swaggerDocument));
 
-
 let db;
 
 async function initDb() {
@@ -26,8 +25,6 @@ async function initDb() {
   console.log("Połączono z bazą SQLite.");
 }
 
-
-
 const __dirname = path.resolve(); 
 app.use(express.static(path.join(__dirname, "../frontend", "dist")));
 
@@ -37,6 +34,22 @@ app.get("/", (req, res) => {
 
 app.get("/apteki", async (req, res) =>{
   try {
+    const { search, fields } = req.query;
+
+    if (fields === 'id') {
+        const apteki = await db.all("SELECT id FROM apteki");
+        return res.json(apteki);
+    }
+
+    if (search && search.trim().length >= 2) {
+        const searchTerm = `%${search}%`;
+        const apteki = await db.all(
+          "SELECT * FROM apteki WHERE nazwa LIKE ? OR wlasciciel_nazwa LIKE ? LIMIT 5",
+          [searchTerm, searchTerm]
+        );
+        return res.json(apteki);
+    }
+
     const apteki = await db.all("SELECT * FROM apteki");
     res.json(apteki);
   }  catch (err) {
@@ -45,63 +58,18 @@ app.get("/apteki", async (req, res) =>{
   }
 });
 
-app.get("/apteki/search/:q", async (req, res) => {
-  try {
-    const { q } = req.params;
-    if (!q || q.trim().length < 2) {
-      return res.json([]);
-    }
-
-    const searchTerm = `%${q}%`;
-    const apteki = await db.all(
-      "SELECT * FROM apteki WHERE nazwa LIKE ? OR wlasciciel_nazwa LIKE ? LIMIT 5",
-      [searchTerm, searchTerm]
-    );
-    res.json(apteki);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Błąd wyszukiwania" });
-  }
-});
-
-app.put("/apteka/wlasciciel/:id_apteki", async (req, res) => {
-  try {
-    const { id_apteki } = req.params;
-    const { owner_id } = req.body;
-    if (!id_apteki || !owner_id) {
-      return res.status(400).json({ error: "Brakuje id apteki lub wlasciciel_id" });
-    }
-
-    await db.run(
-      "UPDATE apteki SET wlasciciel_id = ? WHERE id = ?",
-      [owner_id, id_apteki]
-    );
-
-    res.json({ message: "Zaktualizowano właściciela apteki" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Błąd aktualizacji właściciela apteki" });
-  }
-});
-
-app.post("/apteka/add", async (req, res) => {
+app.post("/apteki", async (req, res) => {
   try {
     let {nazwa, miejscowosc, nazwa_ulicy, nr_budynku, kod_pocztowy, telefon, email, wlasciciel_nazwa, wlasciciel_id} = req.body;
     if (!nazwa) {
       return res.status(400).json({ error: "Brakuje danych w body" });
     }
     const {lat, lon} = await geocodeAddress(miejscowosc, nazwa_ulicy, nr_budynku, kod_pocztowy);
-    if (lat && lon) {
-      console.log(`Geokodowanie powiodło się: ${lat}, ${lon}`);
-    } 
-    if (!telefon)
-      telefon = "";
-    if (!email)
-      email = "";
-    if (!wlasciciel_nazwa)
-      wlasciciel_nazwa = "";
-    if (!wlasciciel_id)
-      wlasciciel_id = null;
+    
+    if (!telefon) telefon = "";
+    if (!email) email = "";
+    if (!wlasciciel_nazwa) wlasciciel_nazwa = "";
+    if (!wlasciciel_id) wlasciciel_id = null;
 
     await db.run(
       `INSERT INTO apteki (nazwa, miejscowosc, nazwa_ulicy, nr_budynku, kod_pocztowy, telefon, email, wlasciciel_nazwa, wlasciciel_id, lat, lon) 
@@ -117,17 +85,7 @@ app.post("/apteka/add", async (req, res) => {
   }
 });
 
-app.get("/apteki/id", async (req, res) =>{
-  try {
-    const apteki = await db.all("SELECT id FROM apteki");
-    res.json(apteki);
-  }  catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Błąd pobierania danych"});
-  }
-});
-
-app.get("/apteka/:id", async (req, res) => {  
+app.get("/apteki/:id", async (req, res) => {  
   try {
     const {id} = req.params;
     if (!id) {
@@ -146,7 +104,50 @@ app.get("/apteka/:id", async (req, res) => {
   }
 });
 
-app.post("/uzytkownik/add", async (req, res) => {
+app.patch("/apteki/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { wlasciciel_id } = req.body;
+    if (!id || !wlasciciel_id) {
+      return res.status(400).json({ error: "Brakuje id apteki lub wlasciciel_id" });
+    }
+
+    await db.run(
+      "UPDATE apteki SET wlasciciel_id = ? WHERE id = ?",
+      [wlasciciel_id, id]
+    );
+
+    res.json({ message: "Zaktualizowano właściciela apteki" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Błąd aktualizacji właściciela apteki" });
+  }
+});
+
+app.get('/apteki/:id/zaopatrzenie', async (req, res) => {
+  try {
+    const id = req.params.id;
+    if (!id) {
+      return res.status(400).json({ error: 'Brakuje id apteki w zapytaniu' });
+    }
+
+    const result = await db.all(
+      `SELECT z.id, z.apteka_id, z.lek_id, z.ilosc, 
+              l.nazwa, l.nazwa_powszechna, l.substancja, l.moc, l.droga_podania, l.kraj_pochodzenia
+       FROM zaopatrzenie z
+       LEFT JOIN leki l ON z.lek_id = l.id
+       WHERE z.apteka_id = ?`,
+      [id]
+    );
+
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Błąd pobierania zaopatrzenia dla apteki' });
+  }
+});
+
+app.post("/uzytkownicy", async (req, res) => {
   try {
     let {email, haslo, admin} = req.body;
 
@@ -154,8 +155,7 @@ app.post("/uzytkownik/add", async (req, res) => {
       return res.status(400).json({ error: "Brakuje danych w body" });
     }
 
-    if (!admin)
-      admin = 0;
+    if (!admin) admin = 0;
 
     const hashed = await bcrypt.hash(haslo, 10);
 
@@ -172,7 +172,17 @@ app.post("/uzytkownik/add", async (req, res) => {
   }
 });
 
-app.get("/uzytkownik/:id", async (req, res) => {
+app.get('/uzytkownicy', async (req, res) => {
+  try {
+    const users = await db.all('SELECT id, email, admin FROM uzytkownicy');
+    res.json(users);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Błąd pobierania użytkowników' });
+  }
+});
+
+app.get("/uzytkownicy/:id", async (req, res) => {
   try {
     const { id } = req.params;
     if (!id) {
@@ -191,7 +201,7 @@ app.get("/uzytkownik/:id", async (req, res) => {
   }
 });
 
-app.post("/uzytkownik/login", async (req, res) => {
+app.post("/auth/login", async (req, res) => {
   try {
     const { email, haslo } = req.body;
     if (!email || !haslo) {
@@ -216,18 +226,23 @@ app.post("/uzytkownik/login", async (req, res) => {
   }
 });
 
-app.get('/uzytkownicy', async (req, res) => {
-  try {
-    const users = await db.all('SELECT id, email, admin FROM uzytkownicy');
-    res.json(users);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Błąd pobierania użytkowników' });
-  }
-});
-
 app.get('/leki', async (req, res) => {
   try {
+    const { search } = req.query;
+
+    if (search) {
+        const likeQuery = `%${search}%`;
+        const leki = await db.all(
+          `SELECT * FROM leki 
+           WHERE nazwa LIKE ? 
+              OR nazwa_powszechna LIKE ? 
+              OR substancja LIKE ?
+           LIMIT 10`,
+          [likeQuery, likeQuery, likeQuery]
+        );
+        return res.json(leki);
+    }
+
     const leki = await db.all('SELECT * FROM leki');
     res.json(leki);
   } catch (err) {
@@ -236,7 +251,24 @@ app.get('/leki', async (req, res) => {
   }
 });
 
-app.get('/lek/:id', async (req, res) => {
+app.get('/leki/suggestions', async (req, res) => {
+  try {
+    const leki = await db.all(`
+      SELECT DISTINCT l.id, l.nazwa 
+      FROM zaopatrzenie z
+      JOIN leki l ON z.lek_id = l.id
+      WHERE z.ilosc > 0
+      ORDER BY RANDOM() 
+      LIMIT 4
+    `);
+    res.json(leki);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Błąd pobierania sugerowanych leków' });
+  }
+});
+
+app.get('/leki/:id', async (req, res) => {
   try {
     const { id } = req.params;
     if (!id) {
@@ -257,7 +289,18 @@ app.get('/lek/:id', async (req, res) => {
 
 app.get('/zaopatrzenie', async (req, res) => {
   try {
-    const aptekaId = req.query.apteka_id;
+    const { apteka_id, lek_id } = req.query;
+
+    if (lek_id) {
+        const zaopatrzenie = await db.all(
+            `SELECT id, apteka_id, ilosc
+             FROM zaopatrzenie
+             WHERE lek_id = ?`,
+            [lek_id]
+          );
+        return res.json(zaopatrzenie);
+    }
+
     let sql = `
       SELECT z.id, z.apteka_id, z.lek_id, z.ilosc, 
              l.nazwa, l.nazwa_powszechna, l.substancja, l.moc
@@ -266,9 +309,9 @@ app.get('/zaopatrzenie', async (req, res) => {
     `;
     const params = [];
 
-    if (aptekaId) {
+    if (apteka_id) {
       sql += ' WHERE z.apteka_id = ?';
-      params.push(aptekaId);
+      params.push(apteka_id);
     }
 
     const result = await db.all(sql, params);
@@ -279,31 +322,7 @@ app.get('/zaopatrzenie', async (req, res) => {
   }
 });
 
-app.get('/zaopatrzenie/apteka/:id', async (req, res) => {
-  try {
-    const id = req.params.id;
-    if (!id) {
-      return res.status(400).json({ error: 'Brakuje id apteki w zapytaniu' });
-    }
-
-    const result = await db.all(
-      `SELECT z.id, z.apteka_id, z.lek_id, z.ilosc, 
-              l.nazwa, l.nazwa_powszechna, l.substancja, l.moc, l.droga_podania, l.kraj_pochodzenia
-       FROM zaopatrzenie z
-       LEFT JOIN leki l ON z.lek_id = l.id
-       WHERE z.apteka_id = ?`,
-      [id]
-    );
-
-    res.json(result);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Błąd pobierania zaopatrzenia dla apteki' });
-  }
-});
-
-
-app.post('/zaopatrzenie/add', async (req, res) => {
+app.post('/zaopatrzenie', async (req, res) => {
   try {
     const { apteka_id, lek_id, ilosc } = req.body;
 
@@ -344,73 +363,9 @@ app.put('/zaopatrzenie/:id', async (req, res) => {
   }
 });
 
-app.get('/leki/suggestions', async (req, res) => {
-  try {
-    // Pobierz 4 losowe leki, które są dostępne w zaopatrzeniu
-    const leki = await db.all(`
-      SELECT DISTINCT l.id, l.nazwa 
-      FROM zaopatrzenie z
-      JOIN leki l ON z.lek_id = l.id
-      WHERE z.ilosc > 0
-      ORDER BY RANDOM() 
-      LIMIT 4
-    `);
-    res.json(leki);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Błąd pobierania sugerowanych leków' });
-  }
-});
-
-app.get('/leki/search/:query', async (req, res) => {
-  try {
-    const { query } = req.params;
-    if (!query) {
-      return res.status(400).json({ error: 'Brakuje zapytania wyszukiwania' });
-    }
-    
-    const likeQuery = `%${query}%`;
-    const leki = await db.all(
-      `SELECT * FROM leki 
-       WHERE nazwa LIKE ? 
-          OR nazwa_powszechna LIKE ? 
-          OR substancja LIKE ?
-       LIMIT 10`,
-      [likeQuery, likeQuery, likeQuery]
-    );
-
-    res.json(leki);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Błąd wyszukiwania leków' });
-  }
-});
-
-app.get('/zaopatrzenie/apteki/lek/:lek_id', async (req, res) => {
-  try {
-    const { lek_id } = req.params;
-    if (!lek_id) {
-      return res.status(400).json({ error: 'Brakuje id leku w zapytaniu' });
-    }
-
-    const zaopatrzenie = await db.all(
-      `SELECT id, apteka_id, ilosc
-       FROM zaopatrzenie
-       WHERE lek_id = ?`,
-      [lek_id]
-    );
-
-    res.json(zaopatrzenie);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Błąd pobierania zaopatrzenia dla leku' });
-  }
-});
-
 const PORT = 5000;
 initDb().then(() => {
   app.listen(PORT, () => console.log(`Server działa na porcie ${PORT}`));
 }).catch(err => {
   console.error("Błąd przy inicjalizacji bazy:", err);
 });
-
