@@ -33,11 +33,11 @@ async function geocodeAddress(miejscowosc, ulica, numerBudynku, kodPocztowy) {
             return { lat, lon };
         } else {
             console.warn(`Nie znaleziono współrzędnych dla adresu: ${address}`);
-            return null// filepath: /home/smecik/AptekON/backend/address_fetching.js
+            return { lat: null, lon: null };
         };
     } catch (error) {
         console.error('Błąd podczas geokodowania adresu:', error.message);
-        return null;
+        return { lat: null, lon: null };
     }
 }
 
