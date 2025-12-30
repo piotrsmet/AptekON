@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import Header from './Header'
 import Sidebar from './Sidebar'
 import Map from './Map'
+import AuthPanel from './AuthPanel'
+import ProfilePanel from './ProfilePanel'
 import '../style/App.css'
 
 function App() {
@@ -11,20 +13,52 @@ function App() {
   const [selectedDrug, setSelectedDrug] = useState(null)
   const [pharmaciesWithDrug, setPharmaciesWithDrug] = useState([])
   const mapRef = useRef(null)
+  
+  // Auth state
+  const [user, setUser] = useState(null)
+  const [authPanelOpen, setAuthPanelOpen] = useState(false)
+  const [authMode, setAuthMode] = useState('login') // 'login' or 'register'
+  const [profilePanelOpen, setProfilePanelOpen] = useState(false)
+  const [reservationRefresh, setReservationRefresh] = useState(0)
 
   // Pobierz wszystkie apteki
-  useEffect(() => {
-    const fetchApteki = async () => {
-      try {
-        const response = await fetch('http://localhost:5000/apteki')
-        const data = await response.json()
-        setApteki(data)
-      } catch (err) {
-        console.error('Błąd pobierania aptek:', err)
-      }
+  const fetchApteki = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/apteki')
+      const data = await response.json()
+      setApteki(data)
+    } catch (err) {
+      console.error('Błąd pobierania aptek:', err)
     }
+  }
+
+  useEffect(() => {
     fetchApteki()
   }, [])
+
+  // Auth handlers
+  const handleOpenAuth = (mode) => {
+    setAuthMode(mode)
+    setAuthPanelOpen(true)
+  }
+
+  const handleLoginSuccess = (userData) => {
+    setUser(userData)
+  }
+
+  const handleLogout = () => {
+    setUser(null)
+  }
+  
+  // Po dodaniu apteki odśwież listę
+  const handleAptekaAdded = () => {
+    fetchApteki()
+  }
+
+  // Odśwież rezerwacje
+  const handleReservationChange = () => {
+    setReservationRefresh(prev => prev + 1)
+  }
 
   // Klik na markera na mapie - bez zoom'u
   const handleMarkerClick = (apteka) => {
@@ -58,7 +92,7 @@ function App() {
       
       // Pobierz apteki dla każdego wariantu leku
       for (const lekId of drugIds) {
-        const response = await fetch(`http://localhost:5000/zaopatrzenie/apteki/lek/${lekId}`)
+        const response = await fetch(`http://localhost:5000/zaopatrzenie?lek_id=${lekId}`)
         const data = await response.json()
         // Dodaj apteki z ilością > 0 do zbioru (automatyczna deduplikacja)
         data
@@ -80,6 +114,10 @@ function App() {
         onSearchChange={setSearchQuery}
         onSelectApteka={handleSearchSelect}
         onDrugSelect={handleDrugSelect}
+        user={user}
+        onOpenAuth={handleOpenAuth}
+        onLogout={handleLogout}
+        onOpenProfile={() => setProfilePanelOpen(true)}
       />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar 
@@ -88,6 +126,9 @@ function App() {
           apteki={apteki}
           pharmaciesWithDrug={pharmaciesWithDrug}
           onSelectApteka={handleSearchSelect}
+          user={user}
+          onReservationChange={handleReservationChange}
+          onZaopatrzenieChange={handleReservationChange}
         />
         <Map 
           onSelectApteka={handleMarkerClick} 
@@ -97,6 +138,25 @@ function App() {
           pharmaciesWithDrug={pharmaciesWithDrug}
         />
       </div>
+      
+      {/* Panel logowania/rejestracji */}
+      <AuthPanel
+        isOpen={authPanelOpen}
+        onClose={() => setAuthPanelOpen(false)}
+        mode={authMode}
+        onSwitchMode={setAuthMode}
+        onLoginSuccess={handleLoginSuccess}
+      />
+      
+      {/* Panel profilu */}
+      <ProfilePanel
+        isOpen={profilePanelOpen}
+        onClose={() => setProfilePanelOpen(false)}
+        user={user}
+        onReservationChange={handleReservationChange}
+        onAptekaAdded={handleAptekaAdded}
+        key={reservationRefresh}
+      />
     </div>
   )
 }

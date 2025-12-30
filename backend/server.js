@@ -10,6 +10,7 @@ import usersRoutes from "./src/routes/usersRoutes.js";
 import authRoutes from "./src/routes/authRoutes.js";
 import lekiRoutes from "./src/routes/lekiRoutes.js";
 import zaopatrzenieRoutes from "./src/routes/zaopatrzenieRoutes.js";
+import rezerwacjeRoutes from "./src/routes/rezerwacjeRoutes.js";
 
 const app = express();
 const swaggerDocument = YAML.load("./swagger.yaml")
@@ -25,6 +26,7 @@ app.use("/uzytkownicy", usersRoutes);
 app.use("/auth", authRoutes);
 app.use("/leki", lekiRoutes);
 app.use("/zaopatrzenie", zaopatrzenieRoutes);
+app.use("/rezerwacje", rezerwacjeRoutes);
 
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "../frontend", "dist", "index.html"));

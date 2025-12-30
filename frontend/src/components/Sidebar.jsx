@@ -1,11 +1,67 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 
-function Sidebar({ selectedApteka, selectedDrug, apteki, pharmaciesWithDrug, onSelectApteka }) {
+function Sidebar({ selectedApteka, selectedDrug, apteki, pharmaciesWithDrug, onSelectApteka, user, onReservationChange, onZaopatrzenieChange }) {
   const [zaopatrzenie, setZaopatrzenie] = useState([])
   const [loading, setLoading] = useState(false)
   const [drugSearchQuery, setDrugSearchQuery] = useState('')
   const [filteredZaopatrzenie, setFilteredZaopatrzenie] = useState([])
   const [showDrugSearch, setShowDrugSearch] = useState(false)
+  const [userRezerwacje, setUserRezerwacje] = useState([])
+  const [reservationModal, setReservationModal] = useState(null) // {lek, maxIlosc}
+  const [reservationQty, setReservationQty] = useState(1)
+  const [showScrollTop, setShowScrollTop] = useState(false)
+  
+  const scrollContainerRef = useRef(null)
+  
+  // Właściciel apteki - stany
+  const [editingLekId, setEditingLekId] = useState(null)
+  const [editingQty, setEditingQty] = useState(0)
+  const [showAddLekModal, setShowAddLekModal] = useState(false)
+  const [lekSearchQuery, setLekSearchQuery] = useState('')
+  const [lekSearchResults, setLekSearchResults] = useState([])
+  const [lekSuggestions, setLekSuggestions] = useState([])
+  const [selectedNewLek, setSelectedNewLek] = useState(null)
+  const [newLekQty, setNewLekQty] = useState(1)
+
+  // Sprawdź czy user jest właścicielem apteki
+  const isOwner = user && selectedApteka && selectedApteka.wlasciciel_id === user.id
+
+  // Pobierz sugestie leków przy otwarciu modalu
+  useEffect(() => {
+    if (!showAddLekModal) return
+    
+    const fetchSuggestions = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/leki/suggestions')
+        const data = await response.json()
+        setLekSuggestions(data)
+      } catch (err) {
+        console.error('Błąd pobierania sugestii:', err)
+      }
+    }
+    fetchSuggestions()
+  }, [showAddLekModal])
+
+  // Pobierz rezerwacje użytkownika dla tej apteki
+  useEffect(() => {
+    if (!selectedApteka || !user) {
+      setUserRezerwacje([])
+      return
+    }
+
+    const fetchUserRezerwacje = async () => {
+      try {
+        const response = await fetch(`http://localhost:5000/rezerwacje/apteka?apteka_id=${selectedApteka.id}&user_id=${user.id}`)
+        const data = await response.json()
+        setUserRezerwacje(data)
+      } catch (err) {
+        console.error('Błąd pobierania rezerwacji:', err)
+        setUserRezerwacje([])
+      }
+    }
+
+    fetchUserRezerwacje()
+  }, [selectedApteka, user])
 
   // Pobierz zaopatrzenie gdy zmieni się wybrana apteka
   useEffect(() => {
@@ -19,7 +75,7 @@ function Sidebar({ selectedApteka, selectedDrug, apteki, pharmaciesWithDrug, onS
     const fetchZaopatrzenie = async () => {
       setLoading(true)
       try {
-        const response = await fetch(`http://localhost:5000/zaopatrzenie/apteka/${selectedApteka.id}`)
+        const response = await fetch(`http://localhost:5000/zaopatrzenie?apteka_id=${selectedApteka.id}`)
         const data = await response.json()
         setZaopatrzenie(data)
         setFilteredZaopatrzenie(data)
@@ -34,6 +90,162 @@ function Sidebar({ selectedApteka, selectedDrug, apteki, pharmaciesWithDrug, onS
 
     fetchZaopatrzenie()
   }, [selectedApteka])
+
+  // Sprawdź czy lek jest zarezerwowany przez użytkownika
+  const getUserReservationForLek = (lekId) => {
+    return userRezerwacje.find(r => r.lek_id === lekId)
+  }
+
+  // Otwórz modal rezerwacji
+  const openReservationModal = (lek) => {
+    setReservationModal({ lek, maxIlosc: lek.ilosc })
+    setReservationQty(1)
+  }
+
+  // Potwierdź rezerwację
+  const confirmReservation = async () => {
+    if (!reservationModal || !user) return
+
+    try {
+      const response = await fetch('http://localhost:5000/rezerwacje', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: user.id,
+          apteka_id: selectedApteka.id,
+          lek_id: reservationModal.lek.lek_id,
+          ilosc: reservationQty
+        })
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Błąd rezerwacji')
+      }
+
+      // Odśwież zaopatrzenie i rezerwacje
+      const zaopatrzenieRes = await fetch(`http://localhost:5000/zaopatrzenie?apteka_id=${selectedApteka.id}`)
+      const zaopatrzenieData = await zaopatrzenieRes.json()
+      setZaopatrzenie(zaopatrzenieData)
+      setFilteredZaopatrzenie(zaopatrzenieData)
+
+      const rezerwacjeRes = await fetch(`http://localhost:5000/rezerwacje/apteka?apteka_id=${selectedApteka.id}&user_id=${user.id}`)
+      const rezerwacjeData = await rezerwacjeRes.json()
+      setUserRezerwacje(rezerwacjeData)
+
+      // Powiadom rodzica o zmianie rezerwacji
+      if (onReservationChange) onReservationChange()
+
+      setReservationModal(null)
+    } catch (err) {
+      console.error('Błąd rezerwacji:', err)
+      alert(err.message)
+    }
+  }
+
+  // ========== FUNKCJE DLA WŁAŚCICIELA APTEKI ==========
+  
+  // Wyszukaj leki do dodania
+  const handleLekSearch = async (query) => {
+    setLekSearchQuery(query)
+    if (query.length < 2) {
+      setLekSearchResults(lekSuggestions)
+      return
+    }
+
+    try {
+      const response = await fetch(`http://localhost:5000/leki?search=${encodeURIComponent(query)}`)
+      const data = await response.json()
+      setLekSearchResults(data)
+    } catch (err) {
+      console.error('Błąd wyszukiwania leków:', err)
+    }
+  }
+
+  // Zapisz zmianę ilości leku
+  const saveQtyChange = async (zaopatrzenieId) => {
+    try {
+      const response = await fetch(`http://localhost:5000/zaopatrzenie/${zaopatrzenieId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ilosc: editingQty })
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Błąd aktualizacji')
+      }
+
+      // Odśwież zaopatrzenie
+      const res = await fetch(`http://localhost:5000/zaopatrzenie?apteka_id=${selectedApteka.id}`)
+      const data = await res.json()
+      setZaopatrzenie(data)
+      setFilteredZaopatrzenie(data)
+      setEditingLekId(null)
+      
+      if (onZaopatrzenieChange) onZaopatrzenieChange()
+    } catch (err) {
+      console.error('Błąd aktualizacji:', err)
+      alert(err.message)
+    }
+  }
+
+  // Dodaj nowy lek do apteki
+  const addNewLek = async () => {
+    if (!selectedNewLek || !selectedApteka) return
+
+    try {
+      const response = await fetch('http://localhost:5000/zaopatrzenie', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apteka_id: selectedApteka.id,
+          lek_id: selectedNewLek.id,
+          ilosc: newLekQty
+        })
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Błąd dodawania leku')
+      }
+
+      // Odśwież zaopatrzenie
+      const res = await fetch(`http://localhost:5000/zaopatrzenie?apteka_id=${selectedApteka.id}`)
+      const data = await res.json()
+      setZaopatrzenie(data)
+      setFilteredZaopatrzenie(data)
+      
+      // Resetuj modal
+      setShowAddLekModal(false)
+      setSelectedNewLek(null)
+      setNewLekQty(1)
+      setLekSearchQuery('')
+      setLekSearchResults([])
+      
+      if (onZaopatrzenieChange) onZaopatrzenieChange()
+    } catch (err) {
+      console.error('Błąd dodawania leku:', err)
+      alert(err.message)
+    }
+  }
+
+  // Obsługa scrollowania - pokaż przycisk scroll-to-top
+  const handleScroll = () => {
+    if (scrollContainerRef.current) {
+      // Pokaż przycisk gdy przewinięto więcej niż wysokość kontenera
+      const scrollTop = scrollContainerRef.current.scrollTop
+      const containerHeight = scrollContainerRef.current.clientHeight
+      setShowScrollTop(scrollTop > containerHeight)
+    }
+  }
+
+  // Scroll to top
+  const scrollToTop = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
 
   // Filtruj leki w aptece na podstawie wyszukiwania
   const handleDrugSearch = (query) => {
@@ -95,13 +307,36 @@ function Sidebar({ selectedApteka, selectedDrug, apteki, pharmaciesWithDrug, onS
             <p className="text-xs text-gray-400">
               {selectedApteka.kod_pocztowy} {selectedApteka.miejscowosc}
             </p>
+            {isOwner && (
+              <p className="text-xs text-green-600 font-medium mt-2">✓ Jesteś właścicielem tej apteki</p>
+            )}
           </div>
           
-          <div className="flex-1 overflow-y-auto px-2 py-4">
+          <div 
+            ref={scrollContainerRef}
+            onScroll={handleScroll}
+            className="flex-1 overflow-y-auto px-2 py-4 relative"
+          >
             <div className="mb-4 px-2">
-              <h4 className="text-sm font-semibold text-gray-900 mb-2 uppercase tracking-wide">
-                Leki ({zaopatrzenie.length})
-              </h4>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
+                  Leki ({zaopatrzenie.length})
+                </h4>
+                {isOwner && (
+                  <button
+                    onClick={() => {
+                      setShowAddLekModal(true)
+                      setLekSearchResults(lekSuggestions)
+                    }}
+                    className="w-7 h-7 bg-green-600 text-white rounded-full flex items-center justify-center hover:bg-green-700 transition"
+                    title="Dodaj lek"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
+                )}
+              </div>
               
               {/* Searchbar dla leków w aptece */}
               <div className="relative">
@@ -154,7 +389,9 @@ function Sidebar({ selectedApteka, selectedDrug, apteki, pharmaciesWithDrug, onS
             
             {!loading && filteredZaopatrzenie.length > 0 && (
               <ul className="space-y-4">
-                {filteredZaopatrzenie.map((lek) => (
+                {filteredZaopatrzenie.map((lek) => {
+                  const userReservation = getUserReservationForLek(lek.lek_id)
+                  return (
                   <li key={lek.id} className="bg-white border-2 border-gray-400 rounded-xl p-4 hover:border-blue-400 hover:shadow-md transition mx-2">
                     <p className="font-bold text-gray-900 text-base break-words leading-snug">
                       {lek.nazwa || 'Nieznany lek'}
@@ -191,9 +428,76 @@ function Sidebar({ selectedApteka, selectedDrug, apteki, pharmaciesWithDrug, onS
                       <span className="text-gray-700 truncate">Dostępna ilość:</span>
                       <span className="text-blue-700 font-bold ml-2">{lek.ilosc} szt.</span>
                     </div>
+                    
+                    {/* Panel dla właściciela - edycja ilości */}
+                    {isOwner ? (
+                      editingLekId === lek.id ? (
+                        <div className="mt-2 flex gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            max="9999"
+                            value={editingQty}
+                            onChange={(e) => setEditingQty(Math.max(0, parseInt(e.target.value) || 0))}
+                            className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+                          />
+                          <button
+                            onClick={() => saveQtyChange(lek.id)}
+                            className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                          >
+                            Zapisz
+                          </button>
+                          <button
+                            onClick={() => setEditingLekId(null)}
+                            className="px-3 py-1 border border-gray-300 text-gray-600 text-sm rounded hover:bg-gray-50"
+                          >
+                            Anuluj
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setEditingLekId(lek.id)
+                            setEditingQty(lek.ilosc)
+                          }}
+                          className="mt-2 w-full py-2 bg-orange-500 text-white text-sm font-medium rounded-lg hover:bg-orange-600 transition"
+                        >
+                          Zmień ilość
+                        </button>
+                      )
+                    ) : (
+                      /* Przycisk rezerwacji lub info o rezerwacji - dla klientów */
+                      userReservation ? (
+                        <div className="mt-2 px-3 py-2 bg-green-100 border border-green-300 rounded text-xs text-green-700 font-medium">
+                          ✓ Zarezerwowano: {userReservation.ilosc} szt.
+                        </div>
+                      ) : user && lek.ilosc > 0 ? (
+                        <button
+                          onClick={() => openReservationModal(lek)}
+                          className="mt-2 w-full py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
+                        >
+                          Zarezerwuj lek
+                        </button>
+                      ) : !user && lek.ilosc > 0 ? (
+                        <p className="mt-2 text-xs text-gray-500 text-center">Zaloguj się, aby zarezerwować</p>
+                      ) : null
+                    )}
                   </li>
-                ))}
+                )})}
               </ul>
+            )}
+            
+            {/* Przycisk scroll-to-top */}
+            {showScrollTop && (
+              <button
+                onClick={scrollToTop}
+                className="fixed bottom-6 left-6 w-10 h-10 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition z-50"
+                title="Przewiń do góry"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                </svg>
+              </button>
             )}
           </div>
         </>
@@ -241,6 +545,144 @@ function Sidebar({ selectedApteka, selectedDrug, apteki, pharmaciesWithDrug, onS
             </p>
           </div>
         </div>
+      )}
+      
+      {/* Modal rezerwacji */}
+      {reservationModal && (
+        <>
+          <div 
+            className="fixed inset-0 bg-black/50 z-[9998]"
+            onClick={() => setReservationModal(null)}
+          />
+          <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl p-6 z-[9999] w-80">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Rezerwacja leku</h3>
+            <p className="text-sm text-gray-600 mb-4">{reservationModal.lek.nazwa}</p>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Ilość (max: {reservationModal.maxIlosc})
+              </label>
+              <input
+                type="number"
+                min="1"
+                max={reservationModal.maxIlosc}
+                value={reservationQty}
+                onChange={(e) => setReservationQty(Math.min(Math.max(1, parseInt(e.target.value) || 1), reservationModal.maxIlosc))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              />
+            </div>
+            
+            <p className="text-xs text-gray-500 mb-4">
+              Rezerwacja ważna przez 24 godziny
+            </p>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setReservationModal(null)}
+                className="flex-1 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+              >
+                Anuluj
+              </button>
+              <button
+                onClick={confirmReservation}
+                className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              >
+                Potwierdź
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+      
+      {/* Modal dodawania leku (dla właściciela) */}
+      {showAddLekModal && (
+        <>
+          <div 
+            className="fixed inset-0 bg-black/50 z-[9998]"
+            onClick={() => {
+              setShowAddLekModal(false)
+              setSelectedNewLek(null)
+              setLekSearchQuery('')
+            }}
+          />
+          <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl p-6 z-[9999] w-96 max-h-[80vh] overflow-hidden flex flex-col">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Dodaj lek do apteki</h3>
+            
+            {!selectedNewLek ? (
+              <>
+                <input
+                  type="text"
+                  placeholder="Szukaj leku..."
+                  value={lekSearchQuery}
+                  onChange={(e) => handleLekSearch(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-100 mb-3"
+                />
+                
+                <div className="flex-1 overflow-y-auto max-h-64">
+                  {(lekSearchQuery.length >= 2 ? lekSearchResults : lekSuggestions).length > 0 ? (
+                    <ul className="space-y-2">
+                      {(lekSearchQuery.length >= 2 ? lekSearchResults : lekSuggestions).map((lek) => (
+                        <li
+                          key={lek.id}
+                          onClick={() => setSelectedNewLek(lek)}
+                          className="p-3 border border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 cursor-pointer transition"
+                        >
+                          <p className="font-medium text-gray-900 text-sm">{lek.nazwa}</p>
+                          {lek.moc && <p className="text-xs text-gray-500">{lek.moc}</p>}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-gray-500 text-center py-4">Wpisz nazwę leku, aby wyszukać</p>
+                  )}
+                </div>
+                
+                <button
+                  onClick={() => setShowAddLekModal(false)}
+                  className="mt-4 w-full py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                >
+                  Anuluj
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                  <p className="font-medium text-gray-900">{selectedNewLek.nazwa}</p>
+                  {selectedNewLek.moc && <p className="text-xs text-gray-500">{selectedNewLek.moc}</p>}
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ilość (max: 100)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={newLekQty}
+                    onChange={(e) => setNewLekQty(Math.min(Math.max(1, parseInt(e.target.value) || 1), 100))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                  />
+                </div>
+                
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setSelectedNewLek(null)}
+                    className="flex-1 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                  >
+                    Wróć
+                  </button>
+                  <button
+                    onClick={addNewLek}
+                    className="flex-1 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                  >
+                    Dodaj lek
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </>
       )}
     </aside>
   )

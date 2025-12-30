@@ -54,7 +54,7 @@ function DrugSearchBar({ onDrugSelect }) {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/leki/search/${query}`)
+      const response = await fetch(`http://localhost:5000/leki?search=${encodeURIComponent(query)}`)
       const data = await response.json()
       // Deduplikuj leki po nazwie, zachowując wszystkie ID
       const uniqueDrugs = deduplicateDrugs(data)
@@ -118,7 +118,7 @@ function DrugSearchBar({ onDrugSelect }) {
   )
 }
 
-function Header({ searchQuery, onSearchChange, onSelectApteka, onDrugSelect }) {
+function Header({ searchQuery, onSearchChange, onSelectApteka, onDrugSelect, user, onOpenAuth, onLogout, onOpenProfile }) {
   const [allApteki, setAllApteki] = useState([])
   const [filteredApteki, setFilteredApteki] = useState([])
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -222,7 +222,44 @@ function Header({ searchQuery, onSearchChange, onSelectApteka, onDrugSelect }) {
         {/* Wyszukiwarka leków */}
         <DrugSearchBar onDrugSelect={onDrugSelect} />
       </div>
-      <div className="w-32"></div>
+      
+      {/* Przyciski logowania / Info o użytkowniku */}
+      <div className="flex items-center gap-3 min-w-fit">
+        {user ? (
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-700">
+              Witaj, <span className="font-semibold text-blue-600">{user.email}</span>
+            </span>
+            <button
+              onClick={onOpenProfile}
+              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition"
+            >
+              Profil
+            </button>
+            <button
+              onClick={onLogout}
+              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition"
+            >
+              Wyloguj
+            </button>
+          </div>
+        ) : (
+          <>
+            <button
+              onClick={() => onOpenAuth('login')}
+              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition"
+            >
+              Zaloguj się
+            </button>
+            <button
+              onClick={() => onOpenAuth('register')}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition"
+            >
+              Zarejestruj się
+            </button>
+          </>
+        )}
+      </div>
     </header>
   )
 }
