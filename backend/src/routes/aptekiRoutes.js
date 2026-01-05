@@ -1,12 +1,23 @@
-import express from 'express';
-import { getApteki, createApteka, getAptekaById, updateAptekaOwner, getAptekaZaopatrzenie } from '../controllers/aptekiController.js';
+import express from 'express'
+import {
+	getApteki,
+	createApteka,
+	getAptekaById,
+	updateAptekaOwner,
+	getAptekaZaopatrzenie,
+	getNajblizszaApteka,
+	getNajblizszaAptekaZLekiem,
+} from '../controllers/aptekiController.js'
 
-const router = express.Router();
+const router = express.Router()
 
-router.get('/', getApteki);
-router.post('/', createApteka);
-router.get('/:id', getAptekaById);
-router.patch('/:id', updateAptekaOwner);
-router.get('/:id/zaopatrzenie', getAptekaZaopatrzenie);
+router.get('/najblizsza', getNajblizszaApteka)
+router.get('/najblizsza-z-lekiem', getNajblizszaAptekaZLekiem)
 
-export default router;
+router.get('/', getApteki)
+router.post('/', createApteka)
+router.get('/:id', getAptekaById)
+router.patch('/:id', updateAptekaOwner)
+router.get('/:id/zaopatrzenie', getAptekaZaopatrzenie)
+
+export default router

@@ -17,6 +17,63 @@ tags:
   - name: "Zaopatrzenie"
     description: "Zarządzanie stanami magazynowymi"
 paths:
+  /apteki/najblizsza:
+    get:
+      tags:
+        - "Apteki"
+      summary: "Znajdź najbliższą aptekę"
+      parameters:
+        - in: query
+          name: "lat"
+          required: true
+          schema:
+            type: number
+            format: float
+          description: "Szerokość geograficzna użytkownika"
+        - in: query
+          name: "lon"
+          required: true
+          schema:
+            type: number
+            format: float
+          description: "Długość geograficzna użytkownika"
+      responses:
+        '200':
+          description: "Najbliższa apteka"
+        '404':
+          description: "Brak aptek z lokalizacją"
+  /apteki/najblizsza-z-lekiem:
+    get:
+      tags:
+        - "Apteki"
+      summary: "Znajdź najbliższą aptekę z danym lekiem"
+      parameters:
+        - in: query
+          name: "lat"
+          required: true
+          schema:
+            type: number
+            format: float
+          description: "Szerokość geograficzna użytkownika"
+        - in: query
+          name: "lon"
+          required: true
+          schema:
+            type: number
+            format: float
+          description: "Długość geograficzna użytkownika"
+        - in: query
+          name: "lek_id"
+          required: true
+          schema:
+            type: integer
+          description: "ID leku"
+      responses:
+        '200':
+          description: "Najbliższa apteka posiadająca lek"
+        '404':
+          description: "Nie znaleziono apteki z tym lekiem"
+
   /apteki:
     get:
       tags:
@@ -253,6 +310,9 @@ paths:
                   type: integer
                 ilosc:
                   type: integer
+                cena:
+                  type: number
+                  format: float
       responses:
         '200':
           description: "Dodano"
@@ -260,7 +320,7 @@ paths:
     put:
       tags:
         - "Zaopatrzenie"
-      summary: "Aktualizuj ilość w zaopatrzeniu"
+      summary: "Aktualizuj ilość lub cenę w zaopatrzeniu"
       parameters:
         - in: path
           name: "id"
@@ -276,250 +336,24 @@ paths:
               properties:
                 ilosc:
                   type: integer
-      responses:
-        // filepath: /home/smecik/AptekON/backend/swagger.yaml
-openapi: 3.0.0
-info:
-  title: "AptekON API"
-  description: "API do zarządzania aptekami, lekami i zaopatrzeniem"
-  version: "1.0.0"
-servers:
-  - url: "http://localhost:5000"
-tags:
-  - name: "Apteki"
-    description: "Zarządzanie aptekami"
-  - name: "Uzytkownicy"
-    description: "Zarządzanie użytkownikami"
-  - name: "Auth"
-    description: "Uwierzytelnianie"
-  - name: "Leki"
-    description: "Katalog leków"
-  - name: "Zaopatrzenie"
-    description: "Zarządzanie stanami magazynowymi"
-paths:
-  /apteki:
-    get:
-      tags:
-        - "Apteki"
-      summary: "Pobierz listę aptek"
-      parameters:
-        - in: query
-          name: "search"
-          schema:
-            type: string
-          description: "Wyszukiwanie po nazwie lub właścicielu"
-        - in: query
-          name: "fields"
-          schema:
-            type: string
-          description: "Opcjonalne filtrowanie pól (np. 'id')"
-      responses:
-        '200':
-          description: "Lista aptek"
-    post:
-      tags:
-        - "Apteki"
-      summary: "Dodaj nową aptekę"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                nazwa:
-                  type: string
-                miejscowosc:
-                  type: string
-                nazwa_ulicy:
-                  type: string
-                nr_budynku:
-                  type: string
-                kod_pocztowy:
-                  type: string
-                telefon:
-                  type: string
-                email:
-                  type: string
-                wlasciciel_nazwa:
-                  type: string
-                wlasciciel_id:
-                  type: integer
-      responses:
-        '200':
-          description: "Apteka dodana"
-  /apteki/{id}:
-    get:
-      tags:
-        - "Apteki"
-      summary: "Pobierz szczegóły apteki"
-      parameters:
-        - in: path
-          name: "id"
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: "Szczegóły apteki"
-        '404':
-          description: "Nie znaleziono apteki"
-    patch:
-      tags:
-        - "Apteki"
-      summary: "Aktualizuj właściciela apteki"
-      parameters:
-        - in: path
-          name: "id"
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                wlasciciel_id:
-                  type: integer
+                cena:
+                  type: number
+                  format: float
       responses:
         '200':
           description: "Zaktualizowano"
-  /apteki/{id}/zaopatrzenie:
+  /zamowienia:
     get:
       tags:
-        - "Apteki"
-      summary: "Pobierz zaopatrzenie konkretnej apteki"
-      parameters:
-        - in: path
-          name: "id"
-          required: true
-          schema:
-            type: integer
+        - "Zamowienia"
+      summary: "Pobierz listę zamówień"
       responses:
         '200':
-          description: "Lista zaopatrzenia"
-  /uzytkownicy:
-    get:
-      tags:
-        - "Uzytkownicy"
-      summary: "Pobierz listę użytkowników"
-      responses:
-        '200':
-          description: "Lista użytkowników"
+          description: "Lista zamówień"
     post:
       tags:
-        - "Uzytkownicy"
-      summary: "Dodaj nowego użytkownika"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  type: string
-                haslo:
-                  type: string
-                admin:
-                  type: integer
-      responses:
-        '200':
-          description: "Użytkownik dodany"
-  /uzytkownicy/{id}:
-    get:
-      tags:
-        - "Uzytkownicy"
-      summary: "Pobierz dane użytkownika"
-      parameters:
-        - in: path
-          name: "id"
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: "Dane użytkownika"
-  /auth/login:
-    post:
-      tags:
-        - "Auth"
-      summary: "Logowanie użytkownika"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  type: string
-                haslo:
-                  type: string
-      responses:
-        '200':
-          description: "Zalogowano poprawnie"
-        '401':
-          description: "Błąd logowania"
-  /leki:
-    get:
-      tags:
-        - "Leki"
-      summary: "Pobierz listę leków"
-      parameters:
-        - in: query
-          name: "search"
-          schema:
-            type: string
-          description: "Wyszukiwanie leków"
-      responses:
-        '200':
-          description: "Lista leków"
-  /leki/suggestions:
-    get:
-      tags:
-        - "Leki"
-      summary: "Pobierz sugerowane leki"
-      responses:
-        '200':
-          description: "Lista sugerowanych leków"
-  /leki/{id}:
-    get:
-      tags:
-        - "Leki"
-      summary: "Pobierz szczegóły leku"
-      parameters:
-        - in: path
-          name: "id"
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: "Szczegóły leku"
-  /zaopatrzenie:
-    get:
-      tags:
-        - "Zaopatrzenie"
-      summary: "Pobierz zaopatrzenie"
-      parameters:
-        - in: query
-          name: "apteka_id"
-          schema:
-            type: integer
-        - in: query
-          name: "lek_id"
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: "Lista zaopatrzenia"
-    post:
-      tags:
-        - "Zaopatrzenie"
-      summary: "Dodaj pozycję do zaopatrzenia"
+        - "Zamowienia"
+      summary: "Dodaj nowe zamówienie"
       requestBody:
         required: true
         content:
@@ -529,33 +363,28 @@ paths:
               properties:
                 apteka_id:
                   type: integer
+                uzytkownik_id:
+                  type: integer
                 lek_id:
                   type: integer
-                ilosc:
-                  type: integer
+                status:
+                  type: string
       responses:
         '200':
-          description: "Dodano"
-  /zaopatrzenie/{id}:
-    put:
+          description: "Zamówienie dodane"
+  /zamowienia/{id}:
+    delete:
       tags:
-        - "Zaopatrzenie"
-      summary: "Aktualizuj ilość w zaopatrzeniu"
+        - "Zamowienia"
+      summary: "Usuń zamówienie"
       parameters:
         - in: path
           name: "id"
           required: true
           schema:
             type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                ilosc:
-                  type: integer
       responses:
         '200':
-          description: "Zaktualizowano"
+          description: "Zamówienie usunięte"
+        '404':
+          description: "Nie znaleziono zamówienia"
