@@ -549,7 +549,7 @@ function Sidebar({
 								<button
 									onClick={deletePharmacy}
 									className='text-xs text-gray-400 hover:text-red-600 transition'
-									title="Usuń tę aptekę"
+									title='Usuń tę aptekę'
 								>
 									Usuń aptekę
 								</button>
@@ -576,7 +576,9 @@ function Sidebar({
 										className='w-10 h-10 bg-green-600 text-green-50 rounded-full flex items-center justify-center hover:bg-green-700 transition shadow-sm'
 										title='Dodaj lek'
 									>
-										<span className="text-2xl font-bold leading-none pb-1">+</span>
+										<span className='text-2xl font-bold leading-none pb-1'>
+											+
+										</span>
 									</button>
 								)}
 							</div>
@@ -947,7 +949,9 @@ function Sidebar({
 								className='fixed bottom-6 left-6 w-12 h-12 bg-blue-600 text-white rounded-full shadow-xl flex items-center justify-center hover:bg-blue-700 transition z-50 hover:scale-105 transform'
 								title='Przewiń do góry'
 							>
-								<span className="text-2xl font-bold mb-1">↑</span>
+								<span className='text-2xl font-bold mb-1'>
+									↑
+								</span>
 							</button>
 						)}
 					</div>
