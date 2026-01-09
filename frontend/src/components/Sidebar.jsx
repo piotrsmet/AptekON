@@ -1,6 +1,28 @@
 import { useEffect, useState, useRef } from 'react'
 
-function Sidebar({ selectedApteka, selectedDrug, apteki, pharmaciesWithDrug, onSelectApteka, user, onReservationChange, onZaopatrzenieChange }) {
+// Funkcja do obliczania odległości (wzór Haversine)
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371 // Promień Ziemi w km
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLon = (lon2 - lon1) * Math.PI / 180
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c // Odległość w km
+}
+
+// Funkcja pomocnicza do formatowania odległości
+const formatDistance = (distanceInKm) => {
+  if (distanceInKm < 1) {
+    return `${Math.round(distanceInKm * 1000)} m`
+  } else {
+    return `${distanceInKm.toFixed(1)} km`
+  }
+}
+
+function Sidebar({ selectedApteka, selectedDrug, apteki, pharmaciesWithDrug, onSelectApteka, user, userLocation, onReservationChange, onZaopatrzenieChange }) {
   const [zaopatrzenie, setZaopatrzenie] = useState([])
   const [loading, setLoading] = useState(false)
   const [drugSearchQuery, setDrugSearchQuery] = useState('')
@@ -285,9 +307,26 @@ function Sidebar({ selectedApteka, selectedDrug, apteki, pharmaciesWithDrug, onS
     setShowDrugSearch(false)
   }
 
-  // Filtruj apteki które mają wybrany lek
+  // Filtruj apteki które mają wybrany lek i oblicz odległość
   const availablePharmacies = selectedDrug 
-    ? apteki.filter(a => pharmaciesWithDrug.includes(a.id))
+    ? apteki
+        .filter(a => pharmaciesWithDrug.includes(a.id))
+        .map(apteka => {
+          if (userLocation && apteka.lat && apteka.lon) {
+            const distance = calculateDistance(
+              userLocation.lat, userLocation.lon,
+              apteka.lat, apteka.lon
+            )
+            return { ...apteka, distance }
+          }
+          return { ...apteka, distance: null }
+        })
+        .sort((a, b) => {
+          if (a.distance === null && b.distance === null) return 0
+          if (a.distance === null) return 1
+          if (b.distance === null) return -1
+          return a.distance - b.distance
+        })
     : []
 
   return (
@@ -518,9 +557,16 @@ function Sidebar({ selectedApteka, selectedDrug, apteki, pharmaciesWithDrug, onS
                   className="bg-white border-2 border-green-400 rounded-xl p-4 hover:border-green-600 hover:shadow-md transition mx-2 cursor-pointer"
                   onClick={() => onSelectApteka(apteka)}
                 >
-                  <h3 className="text-base font-bold text-gray-900 break-words mb-1">
-                    {apteka.nazwa || apteka.wlasciciel_nazwa || 'Apteka'}
-                  </h3>
+                  <div className="flex justify-between items-start">
+                    <h3 className="text-base font-bold text-gray-900 break-words mb-1">
+                      {apteka.nazwa || apteka.wlasciciel_nazwa || 'Apteka'}
+                    </h3>
+                    {apteka.distance !== null && (
+                      <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded ml-2 flex-shrink-0">
+                        {formatDistance(apteka.distance)}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-600 mt-2">
                     {apteka.nazwa_ulicy}{apteka.nr_budynku ? `, ${apteka.nr_budynku}` : ''}
                   </p>

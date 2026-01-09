@@ -1,5 +1,29 @@
 import { useState, useEffect } from 'react'
 
+// Funkcja do obliczania odległości (wzór Haversine)
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371 // Promień Ziemi w km
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLon = (lon2 - lon1) * Math.PI / 180
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c // Odległość w km
+}
+
+// Funkcja pomocnicza do formatowania odległości
+const formatDistance = (distanceInKm) => {
+  if (distanceInKm < 1) {
+    // Mniej niż 1 km - pokaż w metrach
+    return `${Math.round(distanceInKm * 1000)} m`
+  } else {
+    // 1 km lub więcej - pokaż w km z jednym miejscem po przecinku
+    return `${distanceInKm.toFixed(1)} km`
+  }
+}
+
 function DrugSearchBar({ onDrugSelect }) {
   const [drugQuery, setDrugQuery] = useState('')
   const [drugSuggestions, setDrugSuggestions] = useState([])
@@ -122,6 +146,24 @@ function Header({ searchQuery, onSearchChange, onSelectApteka, onDrugSelect, use
   const [allApteki, setAllApteki] = useState([])
   const [filteredApteki, setFilteredApteki] = useState([])
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [userLocation, setUserLocation] = useState(null)
+
+  // Pobierz lokalizację użytkownika
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lon: position.coords.longitude
+          })
+        },
+        (error) => {
+          console.error('Błąd pobierania lokalizacji:', error)
+        }
+      )
+    }
+  }, [])
 
   // Pobierz wszystkie apteki na początek
   useEffect(() => {
@@ -138,21 +180,41 @@ function Header({ searchQuery, onSearchChange, onSelectApteka, onDrugSelect, use
     fetchApteki()
   }, [])
 
-  // Filtruj apteki na podstawie search query
+  // Filtruj apteki na podstawie search query i oblicz odległość
   useEffect(() => {
+    // Dodaj odległość do każdej apteki jeśli mamy lokalizację
+    let aptekiWithDistance = allApteki.map(apteka => {
+      if (userLocation && apteka.lat && apteka.lon) {
+        const distance = calculateDistance(
+          userLocation.lat, userLocation.lon,
+          apteka.lat, apteka.lon
+        )
+        return { ...apteka, distance }
+      }
+      return { ...apteka, distance: null }
+    })
+
+    // Sortuj po odległości (najbliższe pierwsze) - apteki bez lokalizacji na końcu
+    aptekiWithDistance.sort((a, b) => {
+      if (a.distance === null && b.distance === null) return 0
+      if (a.distance === null) return 1
+      if (b.distance === null) return -1
+      return a.distance - b.distance
+    })
+
     if (!searchQuery.trim()) {
-      setFilteredApteki(allApteki.slice(0, 4))
+      setFilteredApteki(aptekiWithDistance.slice(0, 4))
       return
     }
 
     const query = searchQuery.toLowerCase()
-    const filtered = allApteki.filter((apteka) => {
+    const filtered = aptekiWithDistance.filter((apteka) => {
       const nazwa = (apteka.nazwa || '').toLowerCase()
       const wlasciciel = (apteka.wlasciciel_nazwa || '').toLowerCase()
       return nazwa.includes(query) || wlasciciel.includes(query)
     })
     setFilteredApteki(filtered.slice(0, 4))
-  }, [searchQuery, allApteki])
+  }, [searchQuery, allApteki, userLocation])
 
   const handleSelectSuggestion = (apteka) => {
     onSearchChange('')
@@ -206,12 +268,21 @@ function Header({ searchQuery, onSearchChange, onSelectApteka, onDrugSelect, use
                     onClick={() => handleSelectSuggestion(apteka)}
                     className="ml-3 mb-1 mt-1 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition"
                   >
-                    <p className="font-semibold text-gray-900 text-sm">
-                      {apteka.nazwa || apteka.wlasciciel_nazwa}
-                    </p>
-                    <p className="text-xs text-green-600 mt-1">
-                      {apteka.nazwa_ulicy}{apteka.nr_budynku ? `, ${apteka.nr_budynku}` : ''}
-                    </p>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-semibold text-gray-900 text-sm">
+                          {apteka.nazwa || apteka.wlasciciel_nazwa}
+                        </p>
+                        <p className="text-xs text-green-600 mt-1">
+                          {apteka.nazwa_ulicy}{apteka.nr_budynku ? `, ${apteka.nr_budynku}` : ''}
+                        </p>
+                      </div>
+                      {apteka.distance !== null && (
+                        <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded mr-2">
+                          {formatDistance(apteka.distance)}
+                        </span>
+                      )}
+                    </div>
                   </li>
                 ))}
               </ul>

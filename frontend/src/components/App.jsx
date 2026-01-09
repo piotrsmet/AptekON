@@ -12,6 +12,7 @@ function App() {
   const [apteki, setApteki] = useState([])
   const [selectedDrug, setSelectedDrug] = useState(null)
   const [pharmaciesWithDrug, setPharmaciesWithDrug] = useState([])
+  const [userLocation, setUserLocation] = useState(null)
   const mapRef = useRef(null)
   
   // Auth state
@@ -20,6 +21,23 @@ function App() {
   const [authMode, setAuthMode] = useState('login') // 'login' or 'register'
   const [profilePanelOpen, setProfilePanelOpen] = useState(false)
   const [reservationRefresh, setReservationRefresh] = useState(0)
+
+  // Pobierz lokalizację użytkownika
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lon: position.coords.longitude
+          })
+        },
+        (error) => {
+          console.error('Błąd pobierania lokalizacji:', error)
+        }
+      )
+    }
+  }, [])
 
   // Pobierz wszystkie apteki
   const fetchApteki = async () => {
@@ -127,6 +145,7 @@ function App() {
           pharmaciesWithDrug={pharmaciesWithDrug}
           onSelectApteka={handleSearchSelect}
           user={user}
+          userLocation={userLocation}
           onReservationChange={handleReservationChange}
           onZaopatrzenieChange={handleReservationChange}
         />
