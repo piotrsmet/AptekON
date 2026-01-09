@@ -107,3 +107,20 @@ export const updateZaopatrzenie = async (req, res) => {
 		res.status(500).json({ error: 'Błąd aktualizacji zaopatrzenia' })
 	}
 }
+
+export const deleteZaopatrzenie = async (req, res) => {
+    try {
+        const db = getDb();
+        const { id } = req.params;
+
+        if (!id) {
+            return res.status(400).json({ error: 'Brakuje id' });
+        }
+
+        await db.run('DELETE FROM zaopatrzenie WHERE id = ?', [id]);
+        res.json({ message: 'Zaopatrzenie usunięte!' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Błąd usuwania zaopatrzenia' });
+    }
+}

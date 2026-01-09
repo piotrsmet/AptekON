@@ -11,7 +11,7 @@ function escapeHtml(unsafe) {
     .replace(/'/g, '&#039;')
 }
 
-const Map = forwardRef(({ onSelectApteka, apteki, selectedDrug, pharmaciesWithDrug }, ref) => {
+const Map = forwardRef(({ onSelectApteka, apteki, selectedDrug, pharmaciesWithDrug, user }, ref) => {
   const mapContainer = useRef(null)
   const map = useRef(null)
   const markersMap = useRef({})
@@ -74,9 +74,12 @@ const Map = forwardRef(({ onSelectApteka, apteki, selectedDrug, pharmaciesWithDr
       apteki.forEach((apteka) => {
         if (apteka.lat && apteka.lon) {
           // Określ kolor pineski - zielona jeśli ma wybrany lek, niebieska w przeciwnym razie
+          // Żółta (#f59e0b) dla aptek użytkownika
           let iconUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIgZmlsbD0iIzI1NjNlYiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zdmc+' // Niebieski
           
-          if (selectedDrug && pharmaciesWithDrug.includes(apteka.id)) {
+          if (user && apteka.wlasciciel_id === user.id) {
+             iconUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIgZmlsbD0iI2Y1OWUwYiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zdmc+' // Żółty (amber-500)
+          } else if (selectedDrug && pharmaciesWithDrug.includes(apteka.id)) {
             iconUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIgZmlsbD0iIzE2YTM0YSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zdmc+' // Zielony
           }
 
@@ -138,7 +141,7 @@ const Map = forwardRef(({ onSelectApteka, apteki, selectedDrug, pharmaciesWithDr
         }
       })
     })
-  }, [apteki, selectedDrug, pharmaciesWithDrug])
+  }, [apteki, selectedDrug, pharmaciesWithDrug, user])
 
   return <div ref={mapContainer} className="flex-1 h-full" />
 })
