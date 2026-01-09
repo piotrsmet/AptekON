@@ -6,7 +6,6 @@ import {
 	useImperativeHandle,
 } from 'react'
 
-// Prosty escape HTML, zapobiega wstrzyknięciom w popupach
 function escapeHtml(unsafe) {
 	if (unsafe === null || unsafe === undefined) return ''
 	return String(unsafe)
@@ -27,31 +26,26 @@ const Map = forwardRef(
 		const markersMap = useRef({})
 		const layerGroup = useRef(null)
 
-		// Expose zoomToApteka method via ref
 		useImperativeHandle(ref, () => ({
 			zoomToApteka: apteka => {
 				if (map.current && apteka.lat && apteka.lon) {
 					map.current.setView([apteka.lat, apteka.lon], 16)
 				}
-				// Otwórz popup markera
 				if (markersMap.current[apteka.id]) {
 					markersMap.current[apteka.id].openPopup()
 				}
 			},
 		}))
 
-		// Inicjalizuj mapę (tylko raz)
 		useEffect(() => {
 			if (map.current || !mapContainer.current) return
 
-			// Dynamicznie załaduj Leaflet
 			Promise.all([
 				import('leaflet'),
 				import('leaflet/dist/leaflet.css'),
 			]).then(([L]) => {
 				if (!mapContainer.current) return
 
-				// Inicjalizacja mapy - Lublin
 				map.current = L.default
 					.map(mapContainer.current)
 					.setView([51.2465, 22.5684], 13)
@@ -67,7 +61,6 @@ const Map = forwardRef(
 					)
 					.addTo(map.current)
 
-				// Utwórz warstwę dla markerów
 				layerGroup.current = L.default.layerGroup().addTo(map.current)
 			})
 
@@ -79,32 +72,27 @@ const Map = forwardRef(
 			}
 		}, [])
 
-		// Aktualizuj markery gdy zmieniają się dane
 		useEffect(() => {
 			if (!map.current || !layerGroup.current) return
 
 			import('leaflet').then(L => {
-				// Wyczyść stare markery
 				layerGroup.current.clearLayers()
 				markersMap.current = {}
 
-				// Dodaj markery dla wszystkich aptek
 				apteki.forEach(apteka => {
 					if (apteka.lat && apteka.lon) {
-						// Określ kolor pineski - zielona jeśli ma wybrany lek, niebieska w przeciwnym razie
-						// Żółta (#f59e0b) dla aptek użytkownika
 						let iconUrl =
-							'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIgZmlsbD0iIzI1NjNlYiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zdmc+' // Niebieski
+							'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIgZmlsbD0iIzI1NjNlYiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zdmc+'
 
 						if (user && apteka.wlasciciel_id === user.id) {
 							iconUrl =
-								'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIgZmlsbD0iI2Y1OWUwYiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zdmc+' // Żółty (amber-500)
+								'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIgZmlsbD0iI2Y1OWUwYiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zdmc+'
 						} else if (
 							selectedDrug &&
 							pharmaciesWithDrug.includes(apteka.id)
 						) {
 							iconUrl =
-								'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIgZmlsbD0iIzE2YTM0YSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zdmc+' // Zielony
+								'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIgZmlsbD0iIzE2YTM0YSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zdmc+'
 						}
 
 						const customIcon = L.default.icon({
@@ -121,7 +109,6 @@ const Map = forwardRef(
 							.addTo(layerGroup.current)
 						markersMap.current[apteka.id] = marker
 
-						// Przygotuj wartości
 						const nazwa = apteka.nazwa || null
 						const owner =
 							apteka.wlasciciel_nazwa || 'wlasciciel nazwa'
@@ -132,7 +119,6 @@ const Map = forwardRef(
 						const phone = apteka.telefon || ''
 						const email = apteka.email || ''
 
-						// Format adresu: "ulica, numer" (zamiast "ulica numer")
 						const addressLine =
 							street && number
 								? `${street}, ${number}`
@@ -141,8 +127,6 @@ const Map = forwardRef(
 							.filter(Boolean)
 							.join(' ')
 
-						// Popup: jeśli jest kolumna 'nazwa' — wyświetl ją na górze i właściciela poniżej
-						// Jeśli nie ma — wyświetl tylko właściciela
 						let popupContent
 						if (nazwa) {
 							popupContent = `
@@ -222,7 +206,6 @@ const Map = forwardRef(
 						}
 						marker.bindPopup(popupContent)
 
-						// Dodaj listener na klik markera — wyślij aptekę do App
 						marker.on('click', () => {
 							onSelectApteka(apteka)
 						})

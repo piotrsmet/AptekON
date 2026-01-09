@@ -34,10 +34,12 @@ app.get('/', (req, res) => {
 	res.sendFile(path.join(__dirname, '../frontend', 'dist', 'index.html'))
 })
 
-const PORT = 5000
+const PORT = process.env.PORT || 5000
 initDb()
 	.then(() => {
-		app.listen(PORT, () => console.log(`Server działa na porcie ${PORT}`))
+		app.listen(PORT, '0.0.0.0', () =>
+			console.log(`Server działa na porcie ${PORT}`)
+		)
 	})
 	.catch(err => {
 		console.error('Błąd przy inicjalizacji bazy:', err)

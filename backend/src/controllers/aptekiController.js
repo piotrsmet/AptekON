@@ -284,10 +284,7 @@ export const deleteApteka = async (req, res) => {
 			return res.status(400).json({ error: 'Brakuje id' })
 		}
 
-		// Optional: Checks before delete (e.g. ownership verification middleware usually handles this)
-
 		await db.run('DELETE FROM apteki WHERE id = ?', [id])
-		// Delete related data
 		await db.run('DELETE FROM zaopatrzenie WHERE apteka_id = ?', [id])
 		await db.run('DELETE FROM rezerwacje WHERE apteka_id = ?', [id])
 		await db.run('DELETE FROM zamowienia WHERE apteka_id = ?', [id])

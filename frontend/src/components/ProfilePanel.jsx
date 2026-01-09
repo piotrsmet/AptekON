@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { API_URL } from '../config'
 
 function ProfilePanel({
 	isOpen,
@@ -26,14 +27,12 @@ function ProfilePanel({
 	})
 	const [addingApteka, setAddingApteka] = useState(false)
 
-	// Panel właściciela
 	const [selectedAptekaForManage, setSelectedAptekaForManage] = useState(null)
 	const [aptekaZamowienia, setAptekaZamowienia] = useState([])
 	const [aptekaRezerwacje, setAptekaRezerwacje] = useState([])
 	const [loadingAptekaData, setLoadingAptekaData] = useState(false)
 	const [ownerSubTab, setOwnerSubTab] = useState('zamowienia')
 
-	// Pobierz rezerwacje użytkownika
 	useEffect(() => {
 		if (!isOpen || !user) {
 			setRezerwacje([])
@@ -45,7 +44,7 @@ function ProfilePanel({
 			setLoadingRezerwacje(true)
 			try {
 				const response = await fetch(
-					`http://localhost:5000/rezerwacje?user_id=${user.id}`
+					`${API_URL}/rezerwacje?user_id=${user.id}`
 				)
 				const data = await response.json()
 				setRezerwacje(data)
@@ -61,7 +60,7 @@ function ProfilePanel({
 			setLoadingZamowienia(true)
 			try {
 				const response = await fetch(
-					`http://localhost:5000/zamowienia?uzytkownik_id=${user.id}`
+					`${API_URL}/zamowienia?uzytkownik_id=${user.id}`
 				)
 				const data = await response.json()
 				setZamowienia(data)
@@ -76,7 +75,7 @@ function ProfilePanel({
 		const fetchMojeApteki = async () => {
 			setLoadingApteki(true)
 			try {
-				const response = await fetch('http://localhost:5000/apteki')
+				const response = await fetch(`${API_URL}/apteki`)
 				const data = await response.json()
 				const userApteki = data.filter(a => a.wlasciciel_id === user.id)
 				setMojeApteki(userApteki)
@@ -93,7 +92,6 @@ function ProfilePanel({
 		fetchMojeApteki()
 	}, [isOpen, user])
 
-	// Dodaj aptekę
 	const handleAddApteka = async e => {
 		e.preventDefault()
 		if (
@@ -107,7 +105,7 @@ function ProfilePanel({
 
 		setAddingApteka(true)
 		try {
-			const response = await fetch('http://localhost:5000/apteki', {
+			const response = await fetch(`${API_URL}/apteki`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -134,12 +132,10 @@ function ProfilePanel({
 				email: '',
 			})
 
-			// Odśwież listę moich aptek
-			const response2 = await fetch('http://localhost:5000/apteki')
+			const response2 = await fetch(`${API_URL}/apteki`)
 			const data2 = await response2.json()
 			setMojeApteki(data2.filter(a => a.wlasciciel_id === user.id))
 
-			// Powiadom rodzica o nowej aptece
 			if (onAptekaAdded) onAptekaAdded()
 		} catch (err) {
 			console.error('Błąd dodawania apteki:', err)
@@ -149,13 +145,12 @@ function ProfilePanel({
 		}
 	}
 
-	// Anuluj rezerwację
 	const cancelRezerwacja = async rezerwacjaId => {
 		if (!confirm('Czy na pewno chcesz anulować tę rezerwację?')) return
 
 		try {
 			const response = await fetch(
-				`http://localhost:5000/rezerwacje/${rezerwacjaId}`,
+				`${API_URL}/rezerwacje/${rezerwacjaId}`,
 				{
 					method: 'DELETE',
 					headers: { 'Content-Type': 'application/json' },
@@ -168,10 +163,8 @@ function ProfilePanel({
 				throw new Error(data.error || 'Błąd anulowania')
 			}
 
-			// Odśwież listę rezerwacji
 			setRezerwacje(rezerwacje.filter(r => r.id !== rezerwacjaId))
 
-			// Powiadom rodzica o zmianie
 			if (onReservationChange) onReservationChange()
 		} catch (err) {
 			console.error('Błąd anulowania:', err)
@@ -179,7 +172,6 @@ function ProfilePanel({
 		}
 	}
 
-	// Usuń aptekę
 	const deleteApteka = async (aptekaId, aptekaNazwa) => {
 		const confirmation = window.prompt(
 			`Aby usunąć aptekę "${aptekaNazwa}", przepisz jej nazwę poniżej:`
@@ -193,22 +185,17 @@ function ProfilePanel({
 		}
 
 		try {
-			const response = await fetch(
-				`http://localhost:5000/apteki/${aptekaId}`,
-				{
-					method: 'DELETE',
-				}
-			)
+			const response = await fetch(`${API_URL}/apteki/${aptekaId}`, {
+				method: 'DELETE',
+			})
 
 			if (!response.ok) {
 				const data = await response.json()
 				throw new Error(data.error || 'Błąd usuwania apteki')
 			}
 
-			// Odśwież listę aptek
 			setMojeApteki(mojeApteki.filter(a => a.id !== aptekaId))
 
-			// Powiadom rodzica
 			if (onAptekaAdded) onAptekaAdded()
 		} catch (err) {
 			console.error('Błąd usuwania apteki:', err)
@@ -216,7 +203,6 @@ function ProfilePanel({
 		}
 	}
 
-	// Formatuj datę wygaśnięcia
 	const formatDate = dateString => {
 		const date = new Date(dateString)
 		return date.toLocaleString('pl-PL', {
@@ -228,16 +214,13 @@ function ProfilePanel({
 		})
 	}
 
-	// ======= FUNKCJE PANELU WŁAŚCICIELA =======
-
-	// Pobierz dane apteki dla właściciela
 	const fetchAptekaData = async aptekaId => {
 		setLoadingAptekaData(true)
 		try {
 			const [zamRes, rezRes] = await Promise.all([
-				fetch(`http://localhost:5000/zamowienia?apteka_id=${aptekaId}`),
+				fetch(`${API_URL}/zamowienia?apteka_id=${aptekaId}`),
 				fetch(
-					`http://localhost:5000/rezerwacje/apteka?apteka_id=${aptekaId}&owner=true`
+					`${API_URL}/rezerwacje/apteka?apteka_id=${aptekaId}&owner=true`
 				),
 			])
 			const zamData = await zamRes.json()
@@ -253,17 +236,15 @@ function ProfilePanel({
 		}
 	}
 
-	// Wybierz aptekę do zarządzania
 	const selectAptekaForManage = apteka => {
 		setSelectedAptekaForManage(apteka)
 		fetchAptekaData(apteka.id)
 	}
 
-	// Zmień status zamówienia
 	const updateZamowienieStatus = async (zamowienieId, newStatus) => {
 		try {
 			const response = await fetch(
-				`http://localhost:5000/zamowienia/${zamowienieId}/status`,
+				`${API_URL}/zamowienia/${zamowienieId}/status`,
 				{
 					method: 'PUT',
 					headers: { 'Content-Type': 'application/json' },
@@ -275,7 +256,6 @@ function ProfilePanel({
 				throw new Error('Błąd aktualizacji')
 			}
 
-			// Odśwież listę
 			setAptekaZamowienia(
 				aptekaZamowienia.map(z =>
 					z.id === zamowienieId ? { ...z, status: newStatus } : z
@@ -299,7 +279,7 @@ function ProfilePanel({
 
 			{/* Panel */}
 			<div
-				className={`fixed top-0 right-0 h-full w-96 bg-white shadow-2xl transform transition-transform duration-300 z-[9999] ${
+				className={`fixed top-0 right-0 h-full w-full md:w-[600px] bg-white shadow-2xl transform transition-transform duration-300 z-[9999] ${
 					isOpen ? 'translate-x-0' : 'translate-x-full'
 				}`}
 			>

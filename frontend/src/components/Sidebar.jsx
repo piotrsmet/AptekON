@@ -1,28 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
-
-// Funkcja do obliczania odległości (wzór Haversine)
-const calculateDistance = (lat1, lon1, lat2, lon2) => {
-	const R = 6371 // Promień Ziemi w km
-	const dLat = ((lat2 - lat1) * Math.PI) / 180
-	const dLon = ((lon2 - lon1) * Math.PI) / 180
-	const a =
-		Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-		Math.cos((lat1 * Math.PI) / 180) *
-			Math.cos((lat2 * Math.PI) / 180) *
-			Math.sin(dLon / 2) *
-			Math.sin(dLon / 2)
-	const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-	return R * c // Odległość w km
-}
-
-// Funkcja pomocnicza do formatowania odległości
-const formatDistance = distanceInKm => {
-	if (distanceInKm < 1) {
-		return `${Math.round(distanceInKm * 1000)} m`
-	} else {
-		return `${distanceInKm.toFixed(1)} km`
-	}
-}
+import { API_URL } from '../config'
+import { calculateDistance, formatDistance } from '../utils/geo'
 
 function Sidebar({
 	selectedApteka,
@@ -41,13 +19,12 @@ function Sidebar({
 	const [filteredZaopatrzenie, setFilteredZaopatrzenie] = useState([])
 	const [showDrugSearch, setShowDrugSearch] = useState(false)
 	const [userRezerwacje, setUserRezerwacje] = useState([])
-	const [reservationModal, setReservationModal] = useState(null) // {lek, maxIlosc}
+	const [reservationModal, setReservationModal] = useState(null)
 	const [reservationQty, setReservationQty] = useState(1)
 	const [showScrollTop, setShowScrollTop] = useState(false)
 
 	const scrollContainerRef = useRef(null)
 
-	// Właściciel apteki - stany
 	const [editingLekId, setEditingLekId] = useState(null)
 	const [editingQty, setEditingQty] = useState(0)
 	const [editingPrice, setEditingPrice] = useState('')
@@ -62,25 +39,20 @@ function Sidebar({
 	const [globalSearchResults, setGlobalSearchResults] = useState([])
 	const [searchingGlobal, setSearchingGlobal] = useState(false)
 
-	// Sprawdź czy user jest właścicielem apteki
 	const isOwner =
 		user && selectedApteka && selectedApteka.wlasciciel_id === user.id
 
-	// Zamów lek do apteki
 	const handleOrderToPharmacy = async (
 		drugToOrder,
 		fromGlobalSearch = false
 	) => {
-		// Jeśli fromGlobalSearch=true, drugToOrder ma strukturę z tabeli 'leki' (id, nazwa...),
-		// jeśli false, może mieć strukturę z 'zaopatrzenie' (lek_id, nazwa...).
-		// Ustal lekId
 		const lekId = fromGlobalSearch ? drugToOrder.id : drugToOrder.lek_id
 
 		if (!user || !selectedApteka || !lekId) return
 
 		setOrdering(true)
 		try {
-			const response = await fetch('http://localhost:5000/zamowienia', {
+			const response = await fetch(`${API_URL}/zamowienia`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -104,9 +76,7 @@ function Sidebar({
 		}
 	}
 
-	// Wyszukiwanie globalne w Sidebar, gdy brak wyników (lub w tle)
 	useEffect(() => {
-		// Wyczyść jeśli za krótki query
 		if (drugSearchQuery.length < 2) {
 			setGlobalSearchResults([])
 			setSearchingGlobal(false)
@@ -117,7 +87,7 @@ function Sidebar({
 			setSearchingGlobal(true)
 			try {
 				const res = await fetch(
-					`http://localhost:5000/leki?search=${encodeURIComponent(
+					`${API_URL}/leki?search=${encodeURIComponent(
 						drugSearchQuery
 					)}`
 				)
@@ -129,20 +99,17 @@ function Sidebar({
 			} finally {
 				setSearchingGlobal(false)
 			}
-		}, 500) // Debounce 500ms
+		}, 500)
 
 		return () => clearTimeout(timer)
 	}, [drugSearchQuery])
 
-	// Pobierz sugestie leków przy otwarciu modalu
 	useEffect(() => {
 		if (!showAddLekModal) return
 
 		const fetchSuggestions = async () => {
 			try {
-				const response = await fetch(
-					'http://localhost:5000/leki/suggestions'
-				)
+				const response = await fetch(`${API_URL}/leki/suggestions`)
 				const data = await response.json()
 				setLekSuggestions(data)
 			} catch (err) {
@@ -152,7 +119,6 @@ function Sidebar({
 		fetchSuggestions()
 	}, [showAddLekModal])
 
-	// Pobierz rezerwacje użytkownika dla tej apteki
 	useEffect(() => {
 		if (!selectedApteka || !user) {
 			setUserRezerwacje([])
@@ -162,7 +128,7 @@ function Sidebar({
 		const fetchUserRezerwacje = async () => {
 			try {
 				const response = await fetch(
-					`http://localhost:5000/rezerwacje/apteka?apteka_id=${selectedApteka.id}&user_id=${user.id}`
+					`${API_URL}/rezerwacje/apteka?apteka_id=${selectedApteka.id}&user_id=${user.id}`
 				)
 				const data = await response.json()
 				setUserRezerwacje(data)
@@ -175,7 +141,6 @@ function Sidebar({
 		fetchUserRezerwacje()
 	}, [selectedApteka, user])
 
-	// Pobierz zaopatrzenie gdy zmieni się wybrana apteka
 	useEffect(() => {
 		if (!selectedApteka || !selectedApteka.id) {
 			setZaopatrzenie([])
@@ -188,7 +153,7 @@ function Sidebar({
 			setLoading(true)
 			try {
 				const response = await fetch(
-					`http://localhost:5000/zaopatrzenie?apteka_id=${selectedApteka.id}`
+					`${API_URL}/zaopatrzenie?apteka_id=${selectedApteka.id}`
 				)
 				const data = await response.json()
 				setZaopatrzenie(data)
@@ -205,23 +170,20 @@ function Sidebar({
 		fetchZaopatrzenie()
 	}, [selectedApteka])
 
-	// Sprawdź czy lek jest zarezerwowany przez użytkownika
 	const getUserReservationForLek = lekId => {
 		return userRezerwacje.find(r => r.lek_id === lekId)
 	}
 
-	// Otwórz modal rezerwacji
 	const openReservationModal = lek => {
 		setReservationModal({ lek, maxIlosc: lek.ilosc })
 		setReservationQty(1)
 	}
 
-	// Potwierdź rezerwację
 	const confirmReservation = async () => {
 		if (!reservationModal || !user) return
 
 		try {
-			const response = await fetch('http://localhost:5000/rezerwacje', {
+			const response = await fetch(`${API_URL}/rezerwacje`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -237,21 +199,19 @@ function Sidebar({
 				throw new Error(data.error || 'Błąd rezerwacji')
 			}
 
-			// Odśwież zaopatrzenie i rezerwacje
 			const zaopatrzenieRes = await fetch(
-				`http://localhost:5000/zaopatrzenie?apteka_id=${selectedApteka.id}`
+				`${API_URL}/zaopatrzenie?apteka_id=${selectedApteka.id}`
 			)
 			const zaopatrzenieData = await zaopatrzenieRes.json()
 			setZaopatrzenie(zaopatrzenieData)
 			setFilteredZaopatrzenie(zaopatrzenieData)
 
 			const rezerwacjeRes = await fetch(
-				`http://localhost:5000/rezerwacje/apteka?apteka_id=${selectedApteka.id}&user_id=${user.id}`
+				`${API_URL}/rezerwacje/apteka?apteka_id=${selectedApteka.id}&user_id=${user.id}`
 			)
 			const rezerwacjeData = await rezerwacjeRes.json()
 			setUserRezerwacje(rezerwacjeData)
 
-			// Powiadom rodzica o zmianie rezerwacji
 			if (onReservationChange) onReservationChange()
 
 			setReservationModal(null)
@@ -261,9 +221,6 @@ function Sidebar({
 		}
 	}
 
-	// ========== FUNKCJE DLA WŁAŚCICIELA APTEKI ==========
-
-	// Wyszukaj leki do dodania
 	const handleLekSearch = async query => {
 		setLekSearchQuery(query)
 		if (query.length < 2) {
@@ -273,7 +230,7 @@ function Sidebar({
 
 		try {
 			const response = await fetch(
-				`http://localhost:5000/leki?search=${encodeURIComponent(query)}`
+				`${API_URL}/leki?search=${encodeURIComponent(query)}`
 			)
 			const data = await response.json()
 			setLekSearchResults(data)
@@ -282,7 +239,6 @@ function Sidebar({
 		}
 	}
 
-	// Zapisz zmianę ilości i ceny leku
 	const saveLekChanges = async zaopatrzenieId => {
 		try {
 			const bodyData = { ilosc: editingQty }
@@ -291,7 +247,7 @@ function Sidebar({
 			}
 
 			const response = await fetch(
-				`http://localhost:5000/zaopatrzenie/${zaopatrzenieId}`,
+				`${API_URL}/zaopatrzenie/${zaopatrzenieId}`,
 				{
 					method: 'PUT',
 					headers: { 'Content-Type': 'application/json' },
@@ -304,7 +260,6 @@ function Sidebar({
 				throw new Error(data.error || 'Błąd aktualizacji')
 			}
 
-			// Odśwież zaopatrzenie
 			const res = await fetch(
 				`http://localhost:5000/zaopatrzenie?apteka_id=${selectedApteka.id}`
 			)
@@ -320,14 +275,13 @@ function Sidebar({
 		}
 	}
 
-	// Usuń lek z apteki
 	const deleteLek = async zaopatrzenieId => {
 		if (!window.confirm('Czy na pewno chcesz usunąć ten lek z apteki?'))
 			return
 
 		try {
 			const response = await fetch(
-				`http://localhost:5000/zaopatrzenie/${zaopatrzenieId}`,
+				`${API_URL}/zaopatrzenie/${zaopatrzenieId}`,
 				{
 					method: 'DELETE',
 				}
@@ -338,7 +292,6 @@ function Sidebar({
 				throw new Error(data.error || 'Błąd usuwania')
 			}
 
-			// Odśwież zaopatrzenie
 			const res = await fetch(
 				`http://localhost:5000/zaopatrzenie?apteka_id=${selectedApteka.id}`
 			)
@@ -354,7 +307,6 @@ function Sidebar({
 		}
 	}
 
-	// Dodaj nowy lek do apteki
 	const addNewLek = async () => {
 		if (!selectedNewLek || !selectedApteka) return
 		if (!newLekPrice || isNaN(parseFloat(newLekPrice))) {
@@ -363,7 +315,7 @@ function Sidebar({
 		}
 
 		try {
-			const response = await fetch('http://localhost:5000/zaopatrzenie', {
+			const response = await fetch(`${API_URL}/zaopatrzenie`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -379,7 +331,6 @@ function Sidebar({
 				throw new Error(data.error || 'Błąd dodawania leku')
 			}
 
-			// Odśwież zaopatrzenie
 			const res = await fetch(
 				`http://localhost:5000/zaopatrzenie?apteka_id=${selectedApteka.id}`
 			)
@@ -387,7 +338,6 @@ function Sidebar({
 			setZaopatrzenie(data)
 			setFilteredZaopatrzenie(data)
 
-			// Resetuj modal
 			setShowAddLekModal(false)
 			setSelectedNewLek(null)
 			setNewLekQty(1)
@@ -403,25 +353,20 @@ function Sidebar({
 		}
 	}
 
-	// Obsługa scrollowania - pokaż przycisk scroll-to-top
 	const handleScroll = () => {
 		if (scrollContainerRef.current) {
-			// Pokaż przycisk gdy przewinięto więcej niż wysokość kontenera
 			const scrollTop = scrollContainerRef.current.scrollTop
 			const containerHeight = scrollContainerRef.current.clientHeight
 			setShowScrollTop(scrollTop > containerHeight)
 		}
 	}
 
-	// Scroll to top
 	const scrollToTop = () => {
 		if (scrollContainerRef.current) {
 			scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' })
 		}
 	}
 
-	// Filtruj leki w aptece na podstawie wyszukiwania
-	// Usuń aptekę
 	const deletePharmacy = async () => {
 		const confirmation = window.prompt(
 			`Aby usunąć aptekę "${selectedApteka.nazwa}", przepisz jej nazwę poniżej:`
@@ -436,7 +381,7 @@ function Sidebar({
 
 		try {
 			const response = await fetch(
-				`http://localhost:5000/apteki/${selectedApteka.id}`,
+				`${API_URL}/apteki/${selectedApteka.id}`,
 				{
 					method: 'DELETE',
 				}
@@ -480,21 +425,18 @@ function Sidebar({
 		setShowDrugSearch(query.length >= 2)
 	}
 
-	// Obsługa Enter - pokaż pierwszy wynik
 	const handleDrugSearchKeyDown = e => {
 		if (e.key === 'Enter' && filteredZaopatrzenie.length > 0) {
 			setShowDrugSearch(false)
 		}
 	}
 
-	// Wybierz lek z sugestii
 	const selectDrugFromSuggestion = lek => {
 		setDrugSearchQuery(lek.nazwa)
 		setFilteredZaopatrzenie([lek])
 		setShowDrugSearch(false)
 	}
 
-	// Filtruj apteki które mają wybrany lek i oblicz odległość
 	const availablePharmacies = selectedDrug
 		? apteki
 				.filter(a => pharmaciesWithDrug.includes(a.id))
@@ -519,7 +461,7 @@ function Sidebar({
 		: []
 
 	return (
-		<aside className='w-80 bg-white border-r border-gray-200 flex flex-col flex-shrink-0 overflow-hidden'>
+		<aside className='w-full h-full bg-white border-r border-gray-200 flex flex-col flex-shrink-0 overflow-hidden'>
 			{selectedApteka ? (
 				<>
 					<div className='sticky top-0 bg-white border-b border-gray-200 p-6 z-10'>
@@ -560,7 +502,7 @@ function Sidebar({
 					<div
 						ref={scrollContainerRef}
 						onScroll={handleScroll}
-						className='flex-1 overflow-y-auto px-2 py-4 relative'
+						className='flex-1 overflow-y-auto px-4 py-4 relative'
 					>
 						<div className='mb-4 px-2'>
 							<div className='flex items-center justify-between mb-2'>
@@ -1043,7 +985,7 @@ function Sidebar({
 						className='fixed inset-0 bg-black/50 z-[9998]'
 						onClick={() => setReservationModal(null)}
 					/>
-					<div className='fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl p-6 z-[9999] w-80'>
+					<div className='fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl p-6 z-[9999] w-[90vw] md:w-80'>
 						<h3 className='text-lg font-semibold text-gray-900 mb-4'>
 							Rezerwacja leku
 						</h3>
@@ -1108,7 +1050,7 @@ function Sidebar({
 							setLekSearchQuery('')
 						}}
 					/>
-					<div className='fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl p-6 z-[9999] w-96 max-h-[80vh] overflow-hidden flex flex-col'>
+					<div className='fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl p-6 z-[9999] w-[90vw] md:w-96 max-h-[80vh] overflow-hidden flex flex-col'>
 						<h3 className='text-lg font-semibold text-gray-900 mb-4'>
 							Dodaj lek do apteki
 						</h3>

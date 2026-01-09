@@ -11,11 +11,9 @@ async function addColumn() {
 	})
 
 	try {
-		// Dodaj kolumnę data_zamowienia
 		await db.run(`ALTER TABLE zamowienia ADD COLUMN data_zamowienia TEXT`)
 		console.log('Kolumna data_zamowienia dodana!')
 
-		// Ustaw domyślną datę dla istniejących rekordów
 		await db.run(
 			`UPDATE zamowienia SET data_zamowienia = datetime('now') WHERE data_zamowienia IS NULL`
 		)

@@ -35,7 +35,6 @@ export const getRezerwacjeByApteka = async (req, res) => {
 		const db = getDb()
 		const { apteka_id, user_id, owner } = req.query
 
-		// Dla właściciela apteki - pobierz wszystkie rezerwacje
 		if (owner === 'true' && apteka_id) {
 			const rezerwacje = await db.all(
 				`
@@ -53,7 +52,6 @@ export const getRezerwacjeByApteka = async (req, res) => {
 			return res.json(rezerwacje)
 		}
 
-		// Dla zwykłego użytkownika
 		if (!apteka_id || !user_id) {
 			return res
 				.status(400)
@@ -82,14 +80,11 @@ export const createRezerwacja = async (req, res) => {
 		const { user_id, apteka_id, lek_id, ilosc } = req.body
 
 		if (!user_id || !apteka_id || !lek_id || !ilosc) {
-			return res
-				.status(400)
-				.json({
-					error: 'Brakuje danych (user_id, apteka_id, lek_id, ilosc)',
-				})
+			return res.status(400).json({
+				error: 'Brakuje danych (user_id, apteka_id, lek_id, ilosc)',
+			})
 		}
 
-		// Sprawdź dostępność leku
 		const zaopatrzenie = await db.get(
 			'SELECT id, ilosc FROM zaopatrzenie WHERE apteka_id = ? AND lek_id = ?',
 			[apteka_id, lek_id]
@@ -101,13 +96,11 @@ export const createRezerwacja = async (req, res) => {
 				.json({ error: 'Niewystarczająca ilość leku w aptece' })
 		}
 
-		// Zmniejsz ilość w zaopatrzeniu
 		await db.run('UPDATE zaopatrzenie SET ilosc = ilosc - ? WHERE id = ?', [
 			ilosc,
 			zaopatrzenie.id,
 		])
 
-		// Dodaj rezerwację (ważna 24h)
 		const dataRezerwacji = new Date().toISOString()
 		const dataWygasniecia = new Date(
 			Date.now() + 24 * 60 * 60 * 1000
@@ -142,7 +135,6 @@ export const cancelRezerwacja = async (req, res) => {
 				.json({ error: 'Brakuje id rezerwacji lub user_id' })
 		}
 
-		// Pobierz rezerwację
 		const rezerwacja = await db.get(
 			'SELECT * FROM rezerwacje WHERE id = ? AND user_id = ?',
 			[id, user_id]
@@ -152,13 +144,11 @@ export const cancelRezerwacja = async (req, res) => {
 			return res.status(404).json({ error: 'Rezerwacja nie znaleziona' })
 		}
 
-		// Przywróć ilość do zaopatrzenia
 		await db.run(
 			'UPDATE zaopatrzenie SET ilosc = ilosc + ? WHERE apteka_id = ? AND lek_id = ?',
 			[rezerwacja.ilosc, rezerwacja.apteka_id, rezerwacja.lek_id]
 		)
 
-		// Usuń rezerwację
 		await db.run('DELETE FROM rezerwacje WHERE id = ?', [id])
 
 		res.json({ message: 'Rezerwacja anulowana!' })
